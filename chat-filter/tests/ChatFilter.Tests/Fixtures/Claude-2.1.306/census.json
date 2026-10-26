@@ -1,0 +1,237 @@
+{
+  "claudeCodeVersion": "2.1.306",
+  "model": "claude-opus-5-5",
+  "capturedOn": "2026-10-23",
+  "note": "Recount of every .jsonl fixture. messages: one entry per API message id in order of first sight; streamBlocks from content_block_start events, assistantBlocks from assistant lines (one block per line).",
+  "fixtures": {
+    "S1-thinking-text.stdout.jsonl": {
+      "lines": 22,
+      "bytes": 11362,
+      "finalNewline": true,
+      "lineKinds": {
+        "assistant/text": 1,
+        "assistant/thinking": 1,
+        "rate_limit_event": 1,
+        "result/success": 1,
+        "stream_event/content_block_delta/signature_delta": 1,
+        "stream_event/content_block_delta/text_delta": 7,
+        "stream_event/content_block_delta/thinking_delta": 1,
+        "stream_event/content_block_start/text": 1,
+        "stream_event/content_block_start/thinking": 1,
+        "stream_event/content_block_stop": 2,
+        "stream_event/message_delta": 1,
+        "stream_event/message_start": 1,
+        "stream_event/message_stop": 1,
+        "system/init": 1,
+        "system/status": 1
+      },
+      "apiMessages": 1,
+      "assistantThinkingBlocks": 1,
+      "assistantRedactedThinkingBlocks": 0,
+      "streamThinkingStarts": 1,
+      "streamRedactedThinkingStarts": 0,
+      "messages": [
+        {
+          "id": "msg_011CgKYTDMPaDmLUY1fS8Mko",
+          "parentToolUseId": null,
+          "streamBlocks": [
+            "thinking",
+            "text"
+          ],
+          "assistantBlocks": [
+            "thinking",
+            "text"
+          ]
+        }
+      ]
+    },
+    "S2-thinking-tool-use.stdout.jsonl": {
+      "lines": 40,
+      "bytes": 18628,
+      "finalNewline": true,
+      "lineKinds": {
+        "assistant/text": 1,
+        "assistant/thinking": 1,
+        "assistant/tool_use": 1,
+        "rate_limit_event": 1,
+        "result/success": 1,
+        "stream_event/content_block_delta/input_json_delta": 8,
+        "stream_event/content_block_delta/signature_delta": 1,
+        "stream_event/content_block_delta/text_delta": 9,
+        "stream_event/content_block_delta/thinking_delta": 1,
+        "stream_event/content_block_start/text": 1,
+        "stream_event/content_block_start/thinking": 1,
+        "stream_event/content_block_start/tool_use": 1,
+        "stream_event/content_block_stop": 3,
+        "stream_event/message_delta": 2,
+        "stream_event/message_start": 2,
+        "stream_event/message_stop": 2,
+        "system/init": 1,
+        "system/status": 2,
+        "user/tool_result": 1
+      },
+      "apiMessages": 2,
+      "assistantThinkingBlocks": 1,
+      "assistantRedactedThinkingBlocks": 0,
+      "streamThinkingStarts": 1,
+      "streamRedactedThinkingStarts": 0,
+      "messages": [
+        {
+          "id": "msg_011CgKYgCDo7YWdqMMr1JHD9",
+          "parentToolUseId": null,
+          "streamBlocks": [
+            "tool_use"
+          ],
+          "assistantBlocks": [
+            "tool_use"
+          ]
+        },
+        {
+          "id": "msg_011CgKYgUsAXQbb9SPtZYsow",
+          "parentToolUseId": null,
+          "streamBlocks": [
+            "thinking",
+            "text"
+          ],
+          "assistantBlocks": [
+            "thinking",
+            "text"
+          ]
+        }
+      ]
+    },
+    "S3-chat-two-turns.stdin.jsonl": {
+      "lines": 3,
+      "bytes": 511,
+      "finalNewline": true,
+      "lineKinds": {
+        "control_request": 1,
+        "user/text": 2
+      },
+      "apiMessages": 0,
+      "assistantThinkingBlocks": 0,
+      "assistantRedactedThinkingBlocks": 0,
+      "streamThinkingStarts": 0,
+      "streamRedactedThinkingStarts": 0,
+      "messages": []
+    },
+    "S3-chat-two-turns.stdout.jsonl": {
+      "lines": 35,
+      "bytes": 21835,
+      "finalNewline": true,
+      "lineKinds": {
+        "assistant/text": 2,
+        "assistant/thinking": 2,
+        "auth_status": 1,
+        "control_response": 1,
+        "rate_limit_event": 1,
+        "result/success": 2,
+        "stream_event/content_block_delta/signature_delta": 2,
+        "stream_event/content_block_delta/text_delta": 2,
+        "stream_event/content_block_delta/thinking_delta": 2,
+        "stream_event/content_block_start/text": 2,
+        "stream_event/content_block_start/thinking": 2,
+        "stream_event/content_block_stop": 4,
+        "stream_event/message_delta": 2,
+        "stream_event/message_start": 2,
+        "stream_event/message_stop": 2,
+        "system/init": 2,
+        "system/status": 2,
+        "user/text": 2
+      },
+      "apiMessages": 2,
+      "assistantThinkingBlocks": 2,
+      "assistantRedactedThinkingBlocks": 0,
+      "streamThinkingStarts": 2,
+      "streamRedactedThinkingStarts": 0,
+      "messages": [
+        {
+          "id": "msg_011CgKYmyn7CDYk6xRMmdiWp",
+          "parentToolUseId": null,
+          "streamBlocks": [
+            "thinking",
+            "text"
+          ],
+          "assistantBlocks": [
+            "thinking",
+            "text"
+          ]
+        },
+        {
+          "id": "msg_011CgKYnK3EEFavuZg5PyKbi",
+          "parentToolUseId": null,
+          "streamBlocks": [
+            "thinking",
+            "text"
+          ],
+          "assistantBlocks": [
+            "thinking",
+            "text"
+          ]
+        }
+      ]
+    },
+    "S5-subagents.stdout.jsonl": {
+      "lines": 66,
+      "bytes": 33135,
+      "finalNewline": true,
+      "lineKinds": {
+        "assistant/text": 1,
+        "assistant/thinking": 1,
+        "assistant/tool_use": 2,
+        "rate_limit_event": 1,
+        "result/success": 1,
+        "stream_event/content_block_delta/input_json_delta": 21,
+        "stream_event/content_block_delta/signature_delta": 1,
+        "stream_event/content_block_delta/text_delta": 7,
+        "stream_event/content_block_delta/thinking_delta": 2,
+        "stream_event/content_block_start/text": 1,
+        "stream_event/content_block_start/thinking": 1,
+        "stream_event/content_block_start/tool_use": 2,
+        "stream_event/content_block_stop": 4,
+        "stream_event/message_delta": 2,
+        "stream_event/message_start": 2,
+        "stream_event/message_stop": 2,
+        "system/init": 1,
+        "system/status": 2,
+        "system/task_notification": 2,
+        "system/task_started": 2,
+        "system/task_updated": 2,
+        "system/thinking_tokens": 2,
+        "user/text": 2,
+        "user/tool_result": 2
+      },
+      "apiMessages": 2,
+      "assistantThinkingBlocks": 1,
+      "assistantRedactedThinkingBlocks": 0,
+      "streamThinkingStarts": 1,
+      "streamRedactedThinkingStarts": 0,
+      "messages": [
+        {
+          "id": "msg_011CgKYwkbdFoEoC6TUYHCEz",
+          "parentToolUseId": null,
+          "streamBlocks": [
+            "thinking",
+            "tool_use",
+            "tool_use"
+          ],
+          "assistantBlocks": [
+            "thinking",
+            "tool_use",
+            "tool_use"
+          ]
+        },
+        {
+          "id": "msg_011CgKYxGnq2UQEYBtys2qwj",
+          "parentToolUseId": null,
+          "streamBlocks": [
+            "text"
+          ],
+          "assistantBlocks": [
+            "text"
+          ]
+        }
+      ]
+    }
+  }
+}

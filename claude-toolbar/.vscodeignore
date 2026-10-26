@@ -1,0 +1,6 @@
+# What vsce leaves out of claude-toolbar.vsix: everything except the compiled extension in dist\. vsce adds
+# package.json and README.md to every package itself. vsce reads this file by default (VS Code's "Publishing
+# Extensions" page documents it) and refuses a "files" field in package.json beside it.
+# tests\package.integration.test.ts checks what goes in: one dist\ .js per src\ .ts, package.json, README.md.
+**
+!dist/**

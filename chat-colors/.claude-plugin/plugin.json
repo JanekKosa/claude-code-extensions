@@ -1,0 +1,29 @@
+{
+  "name": "chat-colors",
+  "version": "0.1.0",
+  "description": "Draws a tinted band in the colour the Claude toolbar's colour wheel sets above each prompt, each note and each answer of Claude's in the VS Code chat.",
+  "author": { "name": "JanekKosa" },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "pollMs": {
+      "type": "number",
+      "title": "Bridge poll interval (ms)",
+      "description": "How often the mod re-reads the chat-view file that the Claude toolbar writes, in milliseconds. Lower follows the colour wheel sooner. At least 100.",
+      "default": 500,
+      "min": 100
+    },
+    "surfaces": {
+      "type": "string",
+      "title": "Colour the chat on",
+      "description": "Where prompts, notes and answers get their coloured bands: comma-separated surfaces from vscode, desktop, terminal, mobile.",
+      "default": "vscode"
+    },
+    "bandRows": {
+      "type": "number",
+      "title": "Band height (lines)",
+      "description": "How tall the coloured band above each message is, in lines of text. At least 1.",
+      "default": 1,
+      "min": 1
+    }
+  }
+}

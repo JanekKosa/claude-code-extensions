@@ -1,0 +1,14 @@
+// Type-checks what vitest and tsx run but tsc never builds: the tests, the scripts and the vitest configs (and the
+// sources they import). Emits nothing. ES module settings, since vitest and tsx accept import.meta.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["src", "tests", "scripts", "vitest.config.mts", "vitest.integration.config.mts"],
+  // The pages' scripts run in a webview: tsconfig.webview.json type-checks them, with the DOM's types.
+  "exclude": ["src/media"]
+}

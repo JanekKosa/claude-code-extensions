@@ -1,0 +1,28 @@
+{
+  "name": "hide-actions",
+  "version": "0.1.0",
+  "description": "Hides Claude's tool-call rows in the VS Code chat while the Claude toolbar's view button asks for it.",
+  "author": { "name": "JanekKosa" },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "pollMs": {
+      "type": "number",
+      "title": "Bridge poll interval (ms)",
+      "description": "How often the mod re-reads the chat-view file that the Claude toolbar writes, in milliseconds. Lower follows the view button sooner. At least 100.",
+      "default": 500,
+      "min": 100
+    },
+    "surfaces": {
+      "type": "string",
+      "title": "Hide actions on",
+      "description": "Where tool-call rows hide while the view button says so: comma-separated surfaces from vscode, desktop, terminal, mobile.",
+      "default": "vscode"
+    },
+    "alwaysShow": {
+      "type": "string",
+      "title": "Always show these tools",
+      "description": "Tools whose rows stay visible while actions are hidden: comma-separated tool names, spelled exactly as Claude names them, such as AskUserQuestion, ExitPlanMode, TodoWrite.",
+      "default": "AskUserQuestion,ExitPlanMode"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "claudeCodeVersion": "2.1.306",
+  "program": "<home>\\.vscode\\extensions\\anthropic.claude-code-2.1.306-win32-x64\\resources\\native-binary\\claude.exe",
+  "cwd": "<cwd>",
+  "args": [
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--input-format",
+    "stream-json",
+    "--max-thinking-tokens=31999",
+    "--permission-prompt-tool=stdio",
+    "--setting-sources=user,project,local",
+    "--permission-mode=auto",
+    "--include-partial-messages",
+    "--debug",
+    "--debug-to-stderr",
+    "--enable-auth-status",
+    "--no-chrome",
+    "--replay-user-messages",
+    "--strict-mcp-config",
+    "--disallowedTools=Bash,PowerShell,Edit,Write,MultiEdit,NotebookEdit"
+  ],
+  "addedForSafety": [
+    "--strict-mcp-config",
+    "--disallowedTools=Bash,PowerShell,Edit,Write,MultiEdit,NotebookEdit"
+  ],
+  "environment": {
+    "removed": "every variable whose name starts with CLAUDE (this test ran inside a Claude Code session), and MCP_CONNECTION_NONBLOCKING",
+    "added": {
+      "CLAUDE_CODE_ENTRYPOINT": "claude-vscode",
+      "MCP_CONNECTION_NONBLOCKING": "true",
+      "CLAUDE_CODE_ENABLE_TASKS": "0",
+      "CLAUDE_CODE_EMIT_STARTUP_TIMING": "1"
+    }
+  },
+  "stdin": "S3-chat-two-turns.stdin.jsonl: the initialize control request; the first user message after its control_response; the second after the first result line; stdin closed after the second result line."
+}

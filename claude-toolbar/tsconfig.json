@@ -1,0 +1,21 @@
+// Compiles the extension: src\ to dist\ as CommonJS, which VS Code's extension host loads (package.json has no
+// "type": "module", so nothing built here may use import.meta). TypeScript 7 defaults module to esnext, types to []
+// and rootDir to this folder, so all three are set here.
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "bundler",
+    "target": "es2022",
+    "lib": ["es2022"],
+    "types": ["node"],
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"],
+  // src\media holds the pages' scripts, which run in a webview: tsconfig.webview.json compiles them.
+  "exclude": ["src/media"]
+}

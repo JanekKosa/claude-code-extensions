@@ -1,0 +1,3 @@
+{"type":"control_request","request_id":"c1-init-1","request":{"subtype":"initialize"}}
+{"type":"user","session_id":"","message":{"role":"user","content":[{"type":"text","text":"Which is larger, 9.11 or 9.9? Think it through, then answer with the larger number only."}]},"parent_tool_use_id":null}
+{"type":"user","session_id":"","message":{"role":"user","content":[{"type":"text","text":"Subtract 9.11 from your previous answer. Think it through, then answer with the number only."}]},"parent_tool_use_id":null}

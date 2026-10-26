@@ -1,0 +1,22 @@
+{
+  "name": "claude-code-extensions",
+  "description": "Claude Code mods that work with the Claude toolbar for VS Code.",
+  "owner": { "name": "JanekKosa" },
+  "plugins": [
+    {
+      "name": "chat-colors",
+      "source": "./chat-colors",
+      "description": "Draws a tinted band in the colour the Claude toolbar's colour wheel sets above each prompt, each note and each answer of Claude's in the VS Code chat."
+    },
+    {
+      "name": "agents-pane",
+      "source": "./agents-pane",
+      "description": "A pane in the Claude chat that lists every agent of the session as it runs: subagents, each workflow's agents grouped under their workflow, and teammates."
+    },
+    {
+      "name": "decisions-pane",
+      "source": "./decisions-pane",
+      "description": "A pane in the Claude chat that lists the decisions the agent team's register waits for you on, and records your pick and comments in the register."
+    }
+  ]
+}

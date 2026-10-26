@@ -1,0 +1,115 @@
+/*
+ * The Chat colors page, in VS Code's bottom panel. Its colors and fonts are VS Code's theme variables, so the page
+ * follows the theme, and its background is left to the panel. The switch sits at the top: one button per part of the
+ * chat, the selected one in the button colors, each with a swatch of its color. Below it the color wheel with the
+ * lightness slider beside it, and the hex field, Default and the problem line to the right.
+ */
+
+:root {
+  /* The color wheel's width in pixels; the page's script reads it. */
+  --wheel-size: 140;
+}
+
+body {
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  margin: 0;
+  padding: 8px 16px;
+}
+
+.switch {
+  display: inline-flex;
+  border: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.part {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+  color: var(--vscode-foreground);
+  font: inherit;
+  cursor: pointer;
+}
+
+.part:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.part[aria-checked='true'] {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.part:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--vscode-contrastBorder, var(--vscode-widget-border, transparent));
+  border-radius: 2px;
+  background-color: var(--swatch, transparent);
+}
+
+.value {
+  font-family: var(--vscode-editor-font-family);
+  opacity: 0.85;
+}
+
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+  margin-top: 12px;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hex {
+  width: 8em;
+  padding: 3px 6px;
+  border: 1px solid var(--vscode-input-border, transparent);
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  font-family: var(--vscode-editor-font-family);
+}
+
+.hex:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+}
+
+.default {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border: none;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  cursor: pointer;
+}
+
+.default:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.problem {
+  margin: 0;
+  color: var(--vscode-errorForeground);
+}
+
+.note {
+  margin: 12px 0 0;
+  color: var(--vscode-descriptionForeground);
+}

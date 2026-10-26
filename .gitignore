@@ -1,0 +1,27 @@
+# ---------------------------------------------------------------------------
+# Dependencies and build output. Each extension rebuilds its own.
+# ---------------------------------------------------------------------------
+node_modules/
+dist/
+bin/
+obj/
+publish/
+*.vsix
+
+# Type files a Claude Code session writes into a mod it loads, rebuilt at every load
+.claude-plugin/types/
+
+# ---------------------------------------------------------------------------
+# Agent scratch space: task, progress and report files of work in progress.
+# Throwaway, never committed. misc/ keeps what is worth keeping.
+# ---------------------------------------------------------------------------
+/temp/
+
+# Logs, caches, OS noise
+*.log
+*.tsbuildinfo
+coverage/
+TestResults/
+Thumbs.db
+desktop.ini
+.DS_Store

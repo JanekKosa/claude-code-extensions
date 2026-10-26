@@ -1,0 +1,19 @@
+// Compiles the pages' scripts (src\media\*.ts) into the media folder (dist\media). They run in a webview, a browser
+// page, so they get the DOM's types and not Node's, and stay ES modules: a page loads its script with type="module".
+// tsconfig.json leaves src\media out for the same reason.
+{
+  "compilerOptions": {
+    "module": "es2022",
+    "moduleResolution": "bundler",
+    "target": "es2022",
+    "lib": ["es2022", "dom"],
+    "types": [],
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/media"]
+}

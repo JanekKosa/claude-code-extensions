@@ -1,0 +1,59 @@
+{
+  "name": "agents-pane",
+  "version": "0.2.0",
+  "description": "A pane in the Claude chat that lists every agent of the session as it runs: subagents, each workflow's agents grouped under their workflow, and teammates, with each one's model, effort, status, context size and running time.",
+  "author": {
+    "name": "JanekKosa"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "autoOpen": {
+      "type": "boolean",
+      "title": "Open the pane when an agent starts",
+      "description": "Opens the Agents pane by itself when the first agent of the session starts. Once you close the pane it stays closed until you run /agents-pane again.",
+      "default": true
+    },
+    "tickMs": {
+      "type": "number",
+      "title": "Running-time refresh (ms)",
+      "description": "How often the running time of running agents is redrawn, in milliseconds. At least 250.",
+      "default": 1000,
+      "min": 250
+    },
+    "maxAgents": {
+      "type": "number",
+      "title": "Agents kept",
+      "description": "How many agents the pane remembers; the oldest finished ones go first. At least 10.",
+      "default": 300,
+      "min": 10
+    },
+    "labelChars": {
+      "type": "number",
+      "title": "Agent name length (characters)",
+      "description": "How much of an agent's name (the task description it was given) is shown. At least 10.",
+      "default": 48,
+      "min": 10
+    },
+    "rowGap": {
+      "type": "number",
+      "title": "Space between agents (lines)",
+      "description": "Blank lines between two independent agents or workflows, each with everything under it. 0 packs them tight.",
+      "default": 1,
+      "min": 0
+    },
+    "childRowGap": {
+      "type": "number",
+      "title": "Space between sub-agents (lines)",
+      "description": "Blank lines between an agent or workflow and the agents under it, and between those agents. Keep it below the space between agents so each family reads as one block.",
+      "default": 0,
+      "min": 0
+    },
+    "indentCells": {
+      "type": "number",
+      "title": "Indent of a sub-agent (characters)",
+      "description": "How far an agent started by another agent, or by a workflow, is moved right of its parent. At least 1.",
+      "default": 4,
+      "min": 1
+    }
+  }
+}

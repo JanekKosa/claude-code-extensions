@@ -2,7 +2,6 @@
  * Tests of the mod in a session: the registers on disk decide whether the pane shows and what it lists, and a submit
  * records the person's answer through register.mjs, on every surface that draws a text box.
  */
-import type { Engine } from 'claude-code/testing'
 import { expect, test } from 'claude-code/testing'
 
 import {
@@ -29,8 +28,10 @@ import {
   paneText,
   poll,
   pollUntil,
+  runCommand,
   startWorld,
   staleNotice,
+  teamConfig,
   writeLog,
   writeOpen,
 } from '../support/register-world'
@@ -43,21 +44,6 @@ const ORANGE = '#ff8c00'
 
 /** The uid of an entry of the session's repo. */
 const uidOf = (id: string, root = REPO) => `${root}::${id}`
-
-/**
- * Runs the /decisions-pane command as the person does.
- *
- * @param $ the test's engine
- * @returns the command's answer
- */
-async function runCommand($: Engine) {
-  return $.command.run({
-    command: 'decisions-pane',
-    args: '',
-    origin: { kind: 'composer' },
-    presentation: { isFullscreen: false, columns: 80 },
-  })
-}
 
 // ── Whether the pane shows ──
 
@@ -483,7 +469,7 @@ test('D23 another repo\'s answers log is never read', async ($, on) => {
   const world = await startWorld($, on, w => {
     w.files.set(
       CONFIG,
-      JSON.stringify({ register: { folder: 'decisions', openFile: 'OPEN_DECISIONS_CLAUDE.md', showInEveryChat: [TEAM_REPO] } }),
+      teamConfig({ folder: 'decisions', openFile: 'OPEN_DECISIONS_CLAUDE.md', showInEveryChat: [TEAM_REPO] }),
     )
     writeOpen(w, [{ id: 'D-1', what: 'Shop question?' }])
     writeOpen(w, [{ id: 'D-1', what: 'Team question?' }], TEAM_OPEN_FILE)
@@ -557,7 +543,7 @@ test('D26 the log file is the one register.answersLogFile names', async ($, on) 
   await startWorld($, on, w => {
     w.files.set(
       CONFIG,
-      JSON.stringify({ register: { folder: 'decisions', openFile: 'OPEN_DECISIONS_CLAUDE.md', answersLogFile: 'MY_ANSWERS.jsonl' } }),
+      teamConfig({ folder: 'decisions', openFile: 'OPEN_DECISIONS_CLAUDE.md', answersLogFile: 'MY_ANSWERS.jsonl' }),
     )
     writeOpen(w, [{ id: 'D-12' }])
     writeLog(w, [logRecord('D-12', '2026-10-26 10:05', 'from the named log')], `${REPO}\\decisions\\MY_ANSWERS.jsonl`)
@@ -849,7 +835,7 @@ test('D14 only the chat repo register is listed, even when the team shows anothe
   await startWorld($, on, w => {
     w.files.set(
       'C:\\Users\\me\\.claude\\skills\\orchestrate-agents\\orchestration.config.json',
-      JSON.stringify({ register: { folder: 'decisions', openFile: 'OPEN_DECISIONS_CLAUDE.md', showInEveryChat: [TEAM_REPO] } }),
+      teamConfig({ folder: 'decisions', openFile: 'OPEN_DECISIONS_CLAUDE.md', showInEveryChat: [TEAM_REPO] }),
     )
     writeOpen(w, [{ id: 'D-1', what: 'Shop question?' }])
     writeOpen(w, [{ id: 'D-8', what: 'Team question?' }], TEAM_OPEN_FILE)
@@ -868,7 +854,7 @@ test('D14b with only another repo holding decisions, the pane stays closed', asy
   const world = await startWorld($, on, w => {
     w.files.set(
       'C:\\Users\\me\\.claude\\skills\\orchestrate-agents\\orchestration.config.json',
-      JSON.stringify({ register: { folder: 'decisions', openFile: 'OPEN_DECISIONS_CLAUDE.md', showInEveryChat: [TEAM_REPO] } }),
+      teamConfig({ folder: 'decisions', openFile: 'OPEN_DECISIONS_CLAUDE.md', showInEveryChat: [TEAM_REPO] }),
     )
     writeOpen(w, [{ id: 'D-8', what: 'Team question?' }], TEAM_OPEN_FILE)
   })

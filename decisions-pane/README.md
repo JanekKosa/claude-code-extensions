@@ -100,10 +100,32 @@ The heading's flags are bold, each in its own colour: the urgency (HIGH red, MED
 
 ## Showing and hiding it
 
+- **Only in a chat switched on for the agent team.** `/software-developer-agent` switches the team on for one chat:
+  it writes a marker named after the chat's session id,
+  `%USERPROFILE%\.claude\state\software-developer-agent\team-on\<session id>`. The first part is `teamState.folder` in
+  the team's `orchestration.config.json`, the folder of every file the team keeps for itself; `team-on` is
+  `agentTeam.onFolder` there, a folder under it. The pane checks the same marker the team's hooks check, and only
+  looks: it never writes or removes one. A marker at the old place, `%TEMP%\claude-agent-team-on\<session id>`, no
+  longer counts, and neither do team settings without `teamState.folder`. In a chat without it the pane shows nothing, even when
+  decisions wait: no tab, no opening by itself, and no register file is read. Example: D-12 waits in the repo's
+  register; an ordinary chat shows no Decisions tab; type `/software-developer-agent` there and the tab appears at
+  the next refresh (2 seconds by default), without a reload.
+- The pane looks at the marker at the start and at every refresh. A marker that goes closes the pane at the next
+  refresh. A look that fails for another reason than "not there" (a refused read, the team's settings caught half
+  written) keeps what the pane showed, and it looks again at the next refresh. These count as not switched on, as
+  they are errors for the team's own code: a session id that is not a plain id; a `teamState.folder` that is not an
+  absolute path with a drive letter once its variables are filled in (a share such as `\\server\x` included); an
+  `agentTeam.onFolder` that is not one or more plain names joined by `\`. The pane fills in five variables, in any
+  letter case: `%USERPROFILE%`, `%TEMP%`, `%TMP%`, `%LOCALAPPDATA%` and `%APPDATA%`. A mod may read only the
+  environment variables its code names, so a `teamState.folder` naming another variable, such as `%PROGRAMDATA%`,
+  counts as not switched on here although the team's own code accepts it; so does one of the five that is unset or
+  empty. A plain path such as `D:\team-state` always works.
 - It opens by itself when the chat starts with a decision waiting, or when one arrives. Opening at the start puts
   its tab left of the Agents tab, which opens only when the first agent starts.
 - The tab shows the count, `Decisions (3)`, and the pane closes by itself when nothing waits.
 - `/decisions-pane` shows or hides it. Once you close it, it stays closed until a decision it did not show arrives.
+  In a chat not switched on it opens nothing and says:
+  `The agent team is not on in this chat. Type /software-developer-agent to switch it on; the Decisions pane then shows here.`
 - A list taller than the pane scrolls.
 
 ## Installing it
@@ -118,7 +140,7 @@ claude plugin install decisions-pane@claude-code-extensions --scope user
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| Register script | `~/.claude/skills/orchestrate-agents/scripts/register.mjs` | The script that records answers; its `orchestration.config.json` (two folders up) names the register files and the answers log. |
+| Register script | `~/.claude/skills/orchestrate-agents/scripts/register.mjs` | The script that records answers; its `orchestration.config.json` (two folders up) names the register files, the answers log and the switch folder. |
 | Node | `node` | The program that runs the script. |
 | Register refresh (ms) | 2000 | How often the registers are read. At least 500. |
 | Open the pane when a decision waits | on | Off: the pane opens only on `/decisions-pane`. |

@@ -85,15 +85,14 @@ export async function findRegisters($: RegisterDollar, cwd: string, settings: Se
  * @returns the folder and file names; the defaults when the file cannot be read, and for each name it lacks
  */
 async function readConfig($: RegisterDollar, settings: Settings): Promise<RegisterConfig> {
-  const script = await scriptPath($, settings)
-  const skillFolder = parentFolder(parentFolder(script) ?? '')
+  const path = await configPath($, settings)
 
-  if (skillFolder === null) {
+  if (path === null) {
     return DEFAULT_CONFIG
   }
 
   try {
-    const register = (JSON.parse(await $.fs.read(joinPath(skillFolder, CONFIG_FILE))) as { register?: unknown }).register
+    const register = (JSON.parse(await $.fs.read(path)) as { register?: unknown }).register
 
     if (register === null || typeof register !== 'object') {
       return DEFAULT_CONFIG
@@ -110,6 +109,31 @@ async function readConfig($: RegisterDollar, settings: Settings): Promise<Regist
   } catch {
     return DEFAULT_CONFIG
   }
+}
+
+/**
+ * Gives where the team's orchestration.config.json is: beside the scripts folder of register.mjs.
+ *
+ * @param $ the engine interface
+ * @param settings the mod's options (registerScript)
+ * @returns the path; null when the script path has no folder two levels up
+ */
+export async function configPath($: Pick<EngineInterface, 'env'>, settings: Settings): Promise<string | null> {
+  const skillFolder = parentFolder(parentFolder(await scriptPath($, settings)) ?? '')
+
+  return skillFolder === null ? null : joinPath(skillFolder, CONFIG_FILE)
+}
+
+/**
+ * Tells whether a refused file call found nothing there, rather than being refused for another reason.
+ *
+ * @param error what the call rejected with
+ * @returns true for "not there" (`ENOENT`)
+ */
+export function isNotThere(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code
+
+  return NOT_THERE.test(`${typeof code === 'string' ? code : ''} ${String(error)}`)
 }
 
 /**
@@ -136,7 +160,7 @@ async function repoRootOf($: RegisterDollar, start: string): Promise<string> {
  * @param settings the mod's options (registerScript)
  * @returns the path
  */
-export async function scriptPath($: RegisterDollar, settings: Settings): Promise<string> {
+export async function scriptPath($: Pick<EngineInterface, 'env'>, settings: Settings): Promise<string> {
   if (!/^~(?=[\\/]|$)/.test(settings.registerScript)) {
     return settings.registerScript
   }
@@ -285,9 +309,7 @@ async function stampOf($: RegisterDollar, path: string): Promise<string | null> 
 
     return stat.kind === 'file' ? `${stat.mtimeMs}:${stat.size}` : MISSING
   } catch (error) {
-    const code = (error as { code?: unknown } | null)?.code
-
-    return NOT_THERE.test(`${typeof code === 'string' ? code : ''} ${String(error)}`) ? MISSING : null
+    return isNotThere(error) ? MISSING : null
   }
 }
 

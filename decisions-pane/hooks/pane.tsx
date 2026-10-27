@@ -7,7 +7,7 @@
 import type { EngineInterface, On, RenderElement, RenderInput } from 'claude-code'
 
 import type { DecisionKind, DecisionRow, HistoryItem, Urgency } from '../types'
-import { OTHER, answerText } from './decisions'
+import { OTHER, answerText, pointsOf } from './decisions'
 import {
   endSending,
   findDecision,
@@ -53,13 +53,29 @@ const KIND_COLORS: Readonly<Record<DecisionKind, string>> = {
   issue: PINK,
 }
 
+/** What starts each further point of a field, drawn on its own line under the first. */
+const BULLET = '• '
+
+/** How far a field's further points are indented, in characters. */
+const POINT_INDENT = 2
+
 /** What a submit says when Other is picked and nothing is typed. */
 const NEEDS_TEXT = 'Type your answer in the box under Other, or pick one of the options.'
+
+/**
+ * What the command says in a chat the agent team is not switched on for. The team's task lead fixed these words for
+ * its guide pages to quote too: change them together.
+ */
+const NOT_ON =
+  'The agent team is not on in this chat. Type /software-developer-agent to switch it on; the Decisions pane then shows here.'
 
 // ── Registering ──
 
 /**
- * Registers the answer to the pane's command, its close mark and its drawing.
+ * Registers the answer to the pane's command, its close mark and its drawing. The command first looks at the agent
+ * team's switch and reads the registers anew, so a chat switched on a moment ago is seen: in a chat that is not
+ * switched on it says how to switch the team on and opens nothing; otherwise it shows or hides the pane as the person
+ * saw it when they typed the command.
  *
  * @param on the module's registrar
  * @param settings the mod's options
@@ -67,7 +83,13 @@ const NEEDS_TEXT = 'Type your answer in the box under Other, or pick one of the 
  */
 export function registerPane(on: On, settings: Settings): void {
   on('command.run', { command: COMMAND }, async $ => {
-    if (await isPaneOpen($)) {
+    const wasOpen = await isPaneOpen($)
+
+    if (!(await readRegisters($, settings))) {
+      return { text: NOT_ON }
+    }
+
+    if (wasOpen) {
       await closePaneForPerson($)
 
       return { text: 'Decisions pane hidden.' }
@@ -176,7 +198,8 @@ async function drawPane($: EngineInterface, e: RenderInput<'Pane'>, settings: Se
 /**
  * Draws one entry: its heading line (urgency, id, kind, blocking, parent), what it asks, its context (example,
  * recommendation, meanwhile; not its task or evidence), its history (each answer, and each follow-up with an empty line
- * above and below), then the pick list, the comments box, the reason a submit was refused, and the Submit button.
+ * above and below), then the pick list, the comments box, the reason a submit was refused, and the Submit button. What
+ * it asks is its first point in bold, each further point on its own line under it.
  *
  * @param $ the engine interface
  * @param e the render event of the pane
@@ -196,6 +219,7 @@ function drawDecision(
   const pick = board.picks[row.uid] || undefined
   const isSending = board.sending.includes(row.uid)
   const error = board.errors[row.uid]
+  const [what = '', ...whatPoints] = pointsOf(row.what)
 
   return (
     <Box
@@ -208,7 +232,7 @@ function drawDecision(
       rowGap={0}
     >
       {drawHeading($, e, row)}
-      <Text bold>{row.what || '(no question written)'}</Text>
+      {withPoints($, e, <Text bold>{what || '(no question written)'}</Text>, whatPoints)}
       {drawField($, e, 'Example', row.example)}
       {row.options.length === 0 && drawField($, e, 'Options', row.optionsText)}
       {drawField($, e, 'Recommendation', row.recommendation)}
@@ -260,12 +284,13 @@ function drawHeading($: EngineInterface, e: RenderInput<'Pane'>, row: DecisionRo
 }
 
 /**
- * Draws one field of an entry as a labelled line, or nothing when it is empty.
+ * Draws one field of an entry as a labelled line holding its first point, each further point on its own line under
+ * it; nothing when it is empty.
  *
  * @param $ the engine interface
  * @param e the render event of the pane
  * @param label the field's name
- * @param value its text
+ * @param value its text, its points joined with `\n`
  * @returns the line, such as `Example: Invoice 1001 for 250.00 PLN was rejected`; false when empty
  */
 function drawField($: EngineInterface, e: RenderInput<'Pane'>, label: string, value: string): RenderElement | false {
@@ -275,11 +300,59 @@ function drawField($: EngineInterface, e: RenderInput<'Pane'>, label: string, va
     return false
   }
 
-  return (
+  const [first = '', ...further] = pointsOf(value)
+
+  return withPoints(
+    $,
+    e,
     <Text wrap="wrap">
       <Text dimColor>{`${label}: `}</Text>
-      {value}
-    </Text>
+      {first}
+    </Text>,
+    further,
+  )
+}
+
+/**
+ * Puts a field's further points under its first line. A field of one point is its first line alone, drawn as it was
+ * before fields had points.
+ *
+ * @param $ the engine interface
+ * @param e the render event of the pane
+ * @param first the field's first line
+ * @param further its further points; empty when it has none
+ * @returns the first line, or a column of it and one line per further point
+ */
+function withPoints($: EngineInterface, e: RenderInput<'Pane'>, first: RenderElement, further: readonly string[]): RenderElement {
+  const { Box } = $.ui.resolve(e)
+
+  if (further.length === 0) {
+    return first
+  }
+
+  return (
+    <Box flexDirection="column">
+      {first}
+      {further.map(point => drawPoint($, e, point))}
+    </Box>
+  )
+}
+
+/**
+ * Draws one further point of a field: on its own line, indented, after a bullet.
+ *
+ * @param $ the engine interface
+ * @param e the render event of the pane
+ * @param point the point's words
+ * @returns the line, such as `  • It also makes long entries quicker to read.`
+ */
+function drawPoint($: EngineInterface, e: RenderInput<'Pane'>, point: string): RenderElement {
+  const { Box, Text } = $.ui.resolve(e)
+
+  return (
+    <Box paddingLeft={POINT_INDENT}>
+      <Text wrap="wrap">{`${BULLET}${point}`}</Text>
+    </Box>
   )
 }
 

@@ -24,9 +24,24 @@ export const TEAM_LOG_FILE = `${TEAM_REPO}\\decisions\\ANSWERS_LOG_CLAUDE.jsonl`
 export const ANSWER_TIME = '2026-10-26 11:30'
 
 /** Where the mod finds register.mjs and its settings, from the default `~/.claude/skills/...` under this home. */
-const HOME = 'C:\\Users\\me'
+export const HOME = 'C:\\Users\\me'
 export const SCRIPT = `${HOME}\\.claude\\skills\\orchestrate-agents\\scripts\\register.mjs`
-const CONFIG = `${HOME}\\.claude\\skills\\orchestrate-agents\\orchestration.config.json`
+export const CONFIG = `${HOME}\\.claude\\skills\\orchestrate-agents\\orchestration.config.json`
+
+/**
+ * The agent team's switch: the session's id, the root of the team's own files as its settings write it
+ * (`teamState.folder`) and as filled in from USERPROFILE, the switch folder under it (`agentTeam.onFolder`), and the
+ * marker `/software-developer-agent` writes there. A started session has the marker unless a test takes it away.
+ */
+export const SESSION_ID = '0f6c1d2e-3a4b-4c5d-8e9f-a0b1c2d3e4f5'
+export const STATE_FOLDER_SETTING = '%USERPROFILE%\\.claude\\state\\software-developer-agent'
+export const STATE_ROOT = `${HOME}\\.claude\\state\\software-developer-agent`
+export const ON_FOLDER = 'team-on'
+export const MARKER = `${STATE_ROOT}\\${ON_FOLDER}\\${SESSION_ID}`
+
+/** The temp folder (TEMP and TMP), and where the marker lay under it before the team kept its files in one root. */
+export const TEMP_FOLDER = `${HOME}\\AppData\\Local\\Temp`
+export const OLD_MARKER = `${TEMP_FOLDER}\\claude-agent-team-on\\${SESSION_ID}`
 
 /** The open file's header, as register.mjs writes it. */
 const HEADER = '# Open decisions\r\n\r\nQuestions, initiatives and issues not yet closed, newest last.'
@@ -57,6 +72,14 @@ export type World = {
   readonly programs: string[][]
   /** Every path the mod read, in order, a failed read included. */
   readonly reads: string[]
+  /** Every path the mod asked the file system about (exists, size and time, read), in order, failed asks included. */
+  readonly accesses: string[]
+  /** The environment variables the mod sees, by name; a test edits them. One not listed is unset. */
+  readonly env: Map<string, string>
+  /** What `$.session.id()` answers; a test sets another, a wrong one included. */
+  sessionId: unknown
+  /** How many of the next `$.session.id()` calls fail; each failed call counts one down. */
+  failSessionIds: number
   /**
    * How many of the next reads of a path fail although the file is there, as when an agent rewrites it at that moment;
    * each failed read counts one down.
@@ -159,11 +182,57 @@ export function writeLog(world: World, lines: readonly string[], path = LOG_FILE
   world.files.set(path, lines.map(line => `${line}\n`).join(''))
 }
 
+// ── The team's settings and switch ──
+
+/**
+ * Lays out the team's orchestration.config.json with these register settings, the root of the team's own files and
+ * the switch's folder under it, as the team ships them.
+ *
+ * @param register the `register` settings
+ * @returns the file's text
+ */
+export function teamConfig(register: Readonly<Record<string, unknown>>): string {
+  return JSON.stringify({ teamState: { folder: STATE_FOLDER_SETTING }, register, agentTeam: { onFolder: ON_FOLDER } })
+}
+
+/**
+ * Takes the session's marker away, as in a chat the person never switched the team on for.
+ *
+ * @param world the stand-ins
+ */
+export function switchOff(world: World): void {
+  world.files.delete(MARKER)
+}
+
+/**
+ * Writes the session's marker, as `/software-developer-agent` does.
+ *
+ * @param world the stand-ins
+ */
+export function switchOn(world: World): void {
+  world.files.set(MARKER, '2026-10-27T08:00:00.000Z')
+}
+
+/**
+ * Runs the /decisions-pane command as the person does.
+ *
+ * @param $ the test's engine
+ * @returns the command's answer
+ */
+export async function runCommand($: Engine) {
+  return $.command.run({
+    command: 'decisions-pane',
+    args: '',
+    origin: { kind: 'composer' },
+    presentation: { isFullscreen: false, columns: 80 },
+  })
+}
+
 // ── Starting a session ──
 
 /**
- * Starts a session in REPO with every stand-in in place: the repo's `.git`, the team's settings, and whatever the
- * test wrote before.
+ * Starts a session in REPO with every stand-in in place: the repo's `.git`, the team's settings, the session's marker
+ * (the team switched on; `switchOff` in `before` starts it off), and whatever the test wrote before.
  *
  * @param $ the test's engine
  * @param on the test's registrar, beneath the mod
@@ -176,13 +245,24 @@ export async function startWorld($: Engine, on: On, before?: (world: World) => v
     files: new Map([
       [`${REPO}\\.git`, ''],
       [`${TEAM_REPO}\\.git`, ''],
-      [CONFIG, JSON.stringify({ register: { folder: 'decisions', openFile: 'OPEN_DECISIONS_CLAUDE.md', showInEveryChat: [] } })],
+      [CONFIG, teamConfig({ folder: 'decisions', openFile: 'OPEN_DECISIONS_CLAUDE.md', showInEveryChat: [] })],
+      [MARKER, '2026-10-27T08:00:00.000Z'],
     ]),
     openPanes: new Map(),
     log: [],
     runs: [],
     programs: [],
     reads: [],
+    accesses: [],
+    env: new Map([
+      ['USERPROFILE', HOME],
+      ['TEMP', TEMP_FOLDER],
+      ['TMP', TEMP_FOLDER],
+      ['SystemRoot', 'C:\\Windows'],
+      ['windir', 'C:\\Windows'],
+    ]),
+    sessionId: SESSION_ID,
+    failSessionIds: 0,
     failReads: new Map(),
     failStats: new Map(),
     failNext: null,
@@ -202,13 +282,26 @@ export async function startWorld($: Engine, on: On, before?: (world: World) => v
 
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('command.register', () => ({ value: { command: 'decisions-pane' } }))
-  on('env.get', (_, e) => ({ value: e.name === 'USERPROFILE' ? HOME : undefined }))
-  on('fs.exists', (_, e) => ({
-    value: [...world.files.keys()].some(path => path === e.path || path.startsWith(`${e.path}\\`)),
-  }))
+  on('env.get', (_, e) => ({ value: world.env.get(e.name) }))
+  on('session.id', () => {
+    if (world.failSessionIds > 0) {
+      world.failSessionIds -= 1
+
+      return { deny: 'the session id could not be read' }
+    }
+
+    return { value: world.sessionId as string }
+  })
+  on('fs.exists', (_, e) => {
+    world.accesses.push(e.path)
+
+    return { value: [...world.files.keys()].some(path => path === e.path || path.startsWith(`${e.path}\\`)) }
+  })
   on('fs.stat', (_, e) => {
     const text = world.files.get(e.path)
     const failures = world.failStats.get(e.path) ?? 0
+
+    world.accesses.push(e.path)
 
     if (text !== undefined && failures > 0) {
       world.failStats.set(e.path, failures - 1)
@@ -225,6 +318,7 @@ export async function startWorld($: Engine, on: On, before?: (world: World) => v
     const failures = world.failReads.get(e.path) ?? 0
 
     world.reads.push(e.path)
+    world.accesses.push(e.path)
 
     if (text !== undefined && failures > 0) {
       world.failReads.set(e.path, failures - 1)

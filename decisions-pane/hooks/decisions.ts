@@ -6,9 +6,11 @@
  * then one `- Field: value` line per field. Only entries whose Status is waiting-for-user are the person's to answer;
  * an entry without a Status line (an older register) waits for the person too, as register.mjs reads it. An agent that
  * sends an entry back adds a Follow up block: `- Follow up: 2026-10-26 10:20: first line`, then each further line of
- * its text after two spaces, an empty line as a line of exactly two spaces. The person's answers are not in the entry:
- * they are the lines of the answers log beside the open file, one JSON record per answer
- * (`{"id":"D-20","answeredAt":"2026-10-26 10:05","answer":"A, retry once",...}`).
+ * its text after two spaces, an empty line as a line of exactly two spaces. Any other field may be written in points:
+ * its first point on the field's line, each further point on a line of its own as two spaces, `- `, the point
+ * (`  - The pane draws each field as one line.`); Options then has nothing after its colon and one point per option.
+ * The person's answers are not in the entry: they are the lines of the answers log beside the open file, one JSON
+ * record per answer (`{"id":"D-20","answeredAt":"2026-10-26 10:05","answer":"A, retry once",...}`).
  */
 import type { DecisionKind, DecisionOption, DecisionRow, HistoryItem, Urgency } from '../types'
 
@@ -22,6 +24,15 @@ const STILL_OPEN = 'Still open'
 
 /** What starts each further line of a Follow up block; the rest of the line is the text's next line. */
 const CONTINUATION = '  '
+
+/**
+ * What starts a further point of any other field: exactly two spaces, then `- ` (a third space fails at the dash).
+ * The rest of the line is the point.
+ */
+const POINT = '  - '
+
+/** What joins a field's points in its value, first point first. */
+const POINT_BREAK = '\n'
 
 /** A Follow up block's first line after the field's name: its time, then the text's first line as written. */
 const STAMPED = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}): ?(.*)$/
@@ -40,6 +51,9 @@ const FIELD = /^- ([A-Za-z][A-Za-z ]*?):\s?(.*)$/
 
 /** Where a lettered option starts: at the start of the line, or after the end of the option before it. */
 const OPTION_START = /(^|[.!?)]\s+)([A-Z]|[1-9]\d?)[:)]\s+/g
+
+/** The letter or number that starts an option given as a point, as a lettered option starts on a line. */
+const POINT_LETTER = /^([A-Z]|[1-9]\d?)[:)]\s+/
 
 /** The pick that stands for the person's own answer. */
 export const OTHER = 'other'
@@ -179,10 +193,14 @@ type Entry = {
  * Splits a file into its entries. A line that is neither a heading nor a field continues the field above it, joined
  * with a space; in a Follow up block it is the text's next line instead, its line break kept: a line that starts with
  * two spaces gives the rest of it (so `  - Options: C` is text, never a field), and a line of exactly two spaces gives
- * an empty line.
+ * an empty line. Under any other field a line that starts with exactly two spaces and `- ` is a further point: the
+ * value holds its points joined with `\n`, and a point under a field line with nothing after its colon is the value's
+ * first. A point line with no words adds no point; a line after a point continues that point.
  *
  * @param text the file's text
  * @returns the entries, in file order
+ * @example
+ * entriesOf('## D-1\n- What: One.\n  - Two.\n    runs on.')[0].fields // [['What', 'One.\nTwo. runs on.']]
  */
 function entriesOf(text: string): Entry[] {
   const entries: { id: string; flags: string[]; fields: [string, string][]; order: number }[] = []
@@ -198,6 +216,12 @@ function entriesOf(text: string): Entry[] {
       entries.push({ id: canonicalId(heading[1] ?? ''), flags, fields: [], order: entries.length })
     } else if (last?.[0] === FOLLOW_UP && line.startsWith(CONTINUATION)) {
       last[1] = `${last[1]}\n${line.slice(CONTINUATION.length)}`
+    } else if (last && line.startsWith(POINT)) {
+      const point = line.slice(POINT.length).trim()
+
+      if (point !== '') {
+        last[1] = last[1] === '' ? point : `${last[1]}${POINT_BREAK}${point}`
+      }
     } else if (current && line.trim() !== '') {
       const field = FIELD.exec(line)
 
@@ -301,6 +325,18 @@ function followUpOf(value: string): HistoryItem {
 }
 
 /**
+ * Gives a field's points, as the entry wrote them: a value without points is one point.
+ *
+ * @param value a field's value, its points joined with `\n`
+ * @returns its points, first point first
+ * @example
+ * pointsOf('A, because it is cheap.\nIt also logs.') // ['A, because it is cheap.', 'It also logs.']
+ */
+export function pointsOf(value: string): string[] {
+  return value.split(POINT_BREAK)
+}
+
+/**
  * Gives a field's first value.
  *
  * @param fields the entry's fields
@@ -336,27 +372,52 @@ export function parentOf(id: string): string | null {
 // ── Options ──
 
 /**
- * Splits an Options line into its options. A line of lettered options (`A: ... B: ...`) splits at each letter; any
- * other splits at each sentence (`Accept. Remove it.`). Fewer than two is no choice: the entry takes plain text.
+ * Splits an Options field into its options. Given as points, each point is one option: lettered when every point
+ * starts with its own letter or number and `:` or `)`, numbered 1, 2, ... otherwise. Given as one line, a line of
+ * lettered options (`A: ... B: ...`) splits at each letter; any other splits at each sentence (`Accept. Remove it.`).
+ * Fewer than two is no choice: the entry takes plain text. The Recommendation's first point marks the option it names.
  *
- * @param text the Options line's value
- * @param recommendation the Recommendation line's value, to mark the option it names
- * @returns the options, in the line's order
+ * @param text the Options field's value, its points joined with `\n`
+ * @param recommendation the Recommendation field's value, to mark the option it names
+ * @returns the options, in the field's order
  * @example
  * optionsOf('A: retry once (1 hour). B: leave it (none).', 'A, because ...')
  * // [{ value: 'A', label: 'A: retry once (1 hour).', isRecommended: true }, { value: 'B', ... }]
+ * optionsOf('Accept it. Log it.\nRemove it.', 'Remove it') // values 1 and 2, the second recommended
  */
 export function optionsOf(text: string, recommendation: string): DecisionOption[] {
-  const lettered = letteredOptions(text)
-  const labels = lettered ?? sentences(text).map((label, index) => ({ value: String(index + 1), label }))
+  const points = pointsOf(text)
+    .map(point => point.trim())
+    .filter(point => point !== '')
+  const isPoints = points.length > 1
+  const lettered = isPoints ? letteredPoints(points) : letteredOptions(text)
+  const labels = lettered ?? (isPoints ? points : sentences(text)).map((label, index) => ({ value: String(index + 1), label }))
 
   if (labels.length < 2) {
     return []
   }
 
-  const named = lettered === null ? recommendedSentence(labels, recommendation) : recommendedLetter(recommendation)
+  const said = pointsOf(recommendation)[0] ?? ''
+  const named = lettered === null ? recommendedSentence(labels, said) : recommendedLetter(said)
 
   return labels.map(option => ({ ...option, isRecommended: option.value === named }))
+}
+
+/**
+ * Reads options given as points as lettered options.
+ *
+ * @param points the options, one per point
+ * @returns each option's letter or number and its whole text; null when a point starts with none, or two with the same
+ */
+function letteredPoints(points: readonly string[]): { value: string; label: string }[] | null {
+  const options = points.flatMap(label => {
+    const value = POINT_LETTER.exec(label)?.[1]
+
+    return value === undefined ? [] : [{ value, label }]
+  })
+  const isEach = options.length === points.length && new Set(options.map(option => option.value)).size === options.length
+
+  return isEach ? options : null
 }
 
 /**
@@ -397,7 +458,7 @@ function sentences(text: string): string[] {
 /**
  * Finds the letter a recommendation names first: `A, because ...` names A.
  *
- * @param recommendation the Recommendation line's value
+ * @param recommendation the Recommendation's first point
  * @returns the letter or number; null when it starts with neither
  */
 function recommendedLetter(recommendation: string): string | null {
@@ -409,7 +470,7 @@ function recommendedLetter(recommendation: string): string | null {
  * the word before its colon.
  *
  * @param options the options
- * @param recommendation the Recommendation line's value
+ * @param recommendation the Recommendation's first point
  * @returns that option's value; null when it starts with none
  */
 function recommendedSentence(options: readonly { value: string; label: string }[], recommendation: string): string | null {

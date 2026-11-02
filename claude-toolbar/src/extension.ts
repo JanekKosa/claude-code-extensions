@@ -1,12 +1,14 @@
 /**
  * The extension's entry point. VS Code calls activate shortly after it starts (activationEvents
  * onStartupFinished). It registers every look of every toolbar button as a command, and every pane, whose page VS Code
- * builds when it first shows the pane, and starts following the chat's context size. Everything it registers goes
- * into the extension's subscriptions, which VS Code disposes when the extension stops.
+ * builds when it first shows the pane, starts following the chat's context size, and starts writing the bridge file.
+ * Everything it registers goes into the extension's subscriptions, which VS Code disposes when the extension stops.
  */
 
 import { homedir } from 'node:os';
 import type * as vscode from 'vscode';
+import { bridgeFilePath } from './bridge/bridge-path';
+import { startBridgeWriter } from './bridge/bridge-writer';
 import { toolbarButtons } from './buttons';
 import { VscodeHost } from './host/vscode-host';
 import { toolbarPanes } from './panes';
@@ -26,5 +28,6 @@ export function activate(context: Pick<vscode.ExtensionContext, 'subscriptions' 
     ...registerButtons(host, toolbarButtons),
     ...toolbarPanes.map((pane) => host.registerPane(pane)),
     startContextDisplay(host, nodeTranscriptFiles, projectsFolder),
+    startBridgeWriter(host, bridgeFilePath(homedir())),
   );
 }

@@ -2,8 +2,9 @@
 
 A Claude Code mod that colours the VS Code chat: a tinted band, one line high with a thin border, right above each
 of your prompts, each note of Claude's and each answer of Claude's. The colours come from the Claude toolbar's
-colour wheel. The messages themselves stay exactly as the chat draws them: formatting, code highlighting, links and
-the "Copy response" button.
+colour wheel: in its Chat colors pane, pick Prompt band, Notes band or Answer band and choose a colour. A kind with no
+colour gets no band, so nothing shows until you pick one. The messages themselves stay exactly as the chat draws them:
+formatting, code highlighting, links and the "Copy response" button.
 
 Example: Claude reads two files, says "Let me run the tests.", runs `npm test` and ends with "All 12 tests pass."
 Your prompt gets a blue band, "Let me run the tests." an amber band (a note), "All 12 tests pass." a green band (the
@@ -30,7 +31,8 @@ band, then the message.
 
 ## The bridge file
 
-The toolbar writes `%USERPROFILE%\.claude\claude-code-extensions\chat-view.json` (version 2 of the contract):
+The toolbar writes `%USERPROFILE%\.claude\claude-code-extensions\chat-view.json` (version 2 of the contract) when
+VS Code starts and whenever a band's colour or the tint changes, so the file needs no writing by hand:
 
 ```json
 {"colors":{"prompt":"#4FA3E0","notes":"#D29922","answer":"#3FB950"},"tintPercent":15}

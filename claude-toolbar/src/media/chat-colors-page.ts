@@ -2,12 +2,12 @@
  * The script of the Chat colors page. It runs in the webview (a browser page), not in Node: tsconfig.webview.json
  * compiles it into the media folder, and the page loads it as a module after iro.js. It builds one iro.js color wheel
  * with a lightness slider, and keeps the switch, the wheel and the hex field in step with the state the extension
- * sends. The switch picks the part the wheel sets; each of its buttons shows that part's color, or "theme default".
- * The wheel shows the selected part's color: the user's, else the one the chat shows now (VS Code gives the page every
- * theme color as a CSS variable, and the page reads them again whenever VS Code changes them). It saves a color when
- * the user lets go of the wheel (iro.js's input:end), when the hex field was changed and loses focus or Enter is
- * pressed, and removes it at once on Default. The selected part is kept in the webview's state, so it survives the
- * page being rebuilt each time the pane shows again.
+ * sends. The switch picks the part the wheel sets; each of its buttons shows that part's color, or what data-unset-text
+ * says ("theme default", "no band"). The wheel shows the selected part's color: the user's, else the theme color its
+ * button names (VS Code gives the page every theme color as a CSS variable, and the page reads them again whenever VS
+ * Code changes them). It saves a color when the user lets go of the wheel (iro.js's input:end), when the hex field was
+ * changed and loses focus or Enter is pressed, and removes it at once on Default. The selected part is kept in the
+ * webview's state, so it survives the page being rebuilt each time the pane shows again.
  */
 
 import type iroNamespace from '@jaames/iro';
@@ -45,9 +45,6 @@ interface Controls {
 
 /** The channel to the extension. */
 const extension = acquireVsCodeApi();
-
-/** What a part's button says while the user's settings give it no color. */
-const themeDefaultText = 'theme default';
 
 /** A color the wheel takes as it is: # and six hex digits. */
 const sixDigitHex = /^#[0-9a-f]{6}$/i;
@@ -142,8 +139,8 @@ function showState(controls: Controls): void {
 }
 
 /**
- * Shows one part's button: whether it is selected, its color as the swatch, and its color's text or "theme default".
- * A part without a color of the user's gets the theme's own color, as its CSS variable names it, for its swatch.
+ * Shows one part's button: whether it is selected, its color as the swatch, and its color's text or its unset text. A
+ * part without a color of the user's gets the theme's own color, as its CSS variable names it, for its swatch.
  * @param button the part's button
  * @param state the part's state
  */
@@ -151,7 +148,7 @@ function showPart(button: HTMLButtonElement, state: PartState | undefined): void
   const color = state?.color ?? null;
   button.setAttribute('aria-checked', String(partOf(button) === selected));
   button.style.setProperty('--swatch', color ?? `var(${button.dataset.colorVariable})`);
-  part<HTMLElement>(button, '.value').textContent = color ?? themeDefaultText;
+  part<HTMLElement>(button, '.value').textContent = color ?? button.dataset.unsetText ?? '';
 }
 
 /**

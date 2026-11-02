@@ -20,6 +20,7 @@ body {
 
 .switch {
   display: inline-flex;
+  flex-wrap: wrap;
   border: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
   border-radius: 4px;
   overflow: hidden;

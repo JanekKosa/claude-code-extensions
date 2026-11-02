@@ -14,7 +14,7 @@ describe('the palette button', () => {
   it('has one look: the symbol-color icon, the decided tooltip, always shown', () => {
     expect(chatColorsButton.id).toBe('chatColors');
     expect(chatColorsButton.looks.map(({ id, icon, tooltip, when }) => ({ id, icon, tooltip, when }))).toStrictEqual([
-      { id: 'toggle', icon: 'symbol-color', tooltip: 'Chat colors: show or hide the pane that colors the prompt outline and the thinking lines.', when: always },
+      { id: 'toggle', icon: 'symbol-color', tooltip: 'Chat colors: show or hide the pane that colors the prompt outline, the thinking lines and the bands.', when: always },
     ]);
   });
 

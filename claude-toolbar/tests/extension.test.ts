@@ -3,19 +3,23 @@
  * provider under the view id package.json declares (and the context size followed, which with no folder open does
  * nothing), a click on the chat-view button writing only Claude's Focus view
  * setting at Global, a click VS Code refuses shown as one error, a click on the palette button showing the pane while
- * it is hidden and hiding the panel while it shows, and a color saved in the pane merged into the user's
- * workbench.colorCustomizations at Global, keeping what else it held.
+ * it is hidden and hiding the panel while it shows, a color saved in the pane merged into the user's
+ * workbench.colorCustomizations at Global, keeping what else it held, and a band color saved in the pane reaching the
+ * bridge file. The home folder is a temporary one, so the real bridge file is never touched.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { setImmediate as nextTurn } from 'node:timers/promises';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { activate } from '../src/extension';
 import { commands, ConfigurationTarget, fakeVscode, Uri } from './fakes/vscode';
 import { packageJsonPath } from './helpers/paths';
 
 const focusView = 'claudeCode.focusView';
 const customizations = 'workbench.colorCustomizations';
+const promptBand = 'claudeToolbar.promptBandColor';
 
 /** The part of package.json these tests read. */
 const manifest = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
@@ -30,20 +34,44 @@ const declaredViews = Object.values(manifest.contributes.views).flatMap((views) 
 
 describe('activate', () => {
   let context: Parameters<typeof activate>[0];
+  let home: string;
+  let bridgeFile: string;
 
   beforeEach(() => {
+    home = mkdtempSync(join(tmpdir(), 'claude-toolbar-home-'));
+    bridgeFile = join(home, '.claude', 'claude-code-extensions', 'chat-view.json');
+    vi.stubEnv('USERPROFILE', home);
+    vi.stubEnv('HOME', home);
+    if (homedir() !== home) throw new Error(`The home folder is still ${homedir()}: a test must never write the real bridge file.`);
     fakeVscode.reset();
     context = { subscriptions: [], extensionUri: Uri.file('C:\\extensions\\claude-toolbar') };
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await vi.waitFor(() => expect(existsSync(bridgeFile)).toBe(true));
     for (const subscription of context.subscriptions) subscription.dispose();
+    vi.unstubAllEnvs();
+    rmSync(home, { recursive: true, force: true, maxRetries: 5 });
   });
 
-  it('registers every command and every pane package.json declares, and keeps one disposable for each and one for the context size', () => {
+  it('registers every command and every pane package.json declares, and keeps one disposable for each, one for the context size and one for the bridge file', () => {
     activate(context);
     expect([[...fakeVscode.commands.keys()].sort(), [...fakeVscode.viewProviders.keys()]]).toEqual([[...declaredIds].sort(), declaredViews]);
-    expect(context.subscriptions).toHaveLength(declaredIds.length + declaredViews.length + 1);
+    expect(context.subscriptions).toHaveLength(declaredIds.length + declaredViews.length + 2);
+  });
+
+  it('writes the bridge file under the home folder when it starts, with no band while no color is set', async () => {
+    fakeVscode.settings.set('claudeToolbar.bandTintPercent', 15);
+    activate(context);
+    await vi.waitFor(() => expect(readFileSync(bridgeFile, 'utf8')).toBe('{"colors":{"prompt":null,"notes":null,"answer":null},"tintPercent":15}\n'));
+  });
+
+  it('carries a band color saved in the pane to the bridge file', async () => {
+    fakeVscode.settings.set('claudeToolbar.bandTintPercent', 15);
+    activate(context);
+    fakeVscode.buildView('claudeToolbar.chatColors').receive({ type: 'save', part: 'promptBand', color: '#123abc' });
+    await vi.waitFor(() => expect(readFileSync(bridgeFile, 'utf8')).toBe('{"colors":{"prompt":"#123ABC","notes":null,"answer":null},"tintPercent":15}\n'));
+    expect(fakeVscode.updates).toStrictEqual([{ key: promptBand, value: '#123ABC', target: ConfigurationTarget.Global }]);
   });
 
   it("writes only Claude's Focus view setting at Global on a click of the chat-view button", async () => {

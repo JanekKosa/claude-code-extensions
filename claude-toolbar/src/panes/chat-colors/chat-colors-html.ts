@@ -1,9 +1,9 @@
 /**
- * The Chat colors page's HTML: at the top a two-way switch (one button per part of the chat), below it the place of
- * the color wheel, the hex field, Default and the problem line, then a note on what else follows the two colors, the
- * stylesheet, iro.js and the page's script. Every file comes from the media folder through the URLs the host gives, and
- * the content security policy lets in nothing else: the stylesheet only from the page's own source, scripts only from
- * the tags that carry this page's nonce.
+ * The Chat colors page's HTML: at the top a switch (one button per part of the chat), below it the place of the color
+ * wheel, the hex field, Default and the problem line, then a note on what else follows the thinking lines' color and
+ * what draws the bands, the stylesheet, iro.js and the page's script. Every file comes from the media folder through
+ * the URLs the host gives, and the content security policy lets in nothing else: the stylesheet only from the page's
+ * own source, scripts only from the tags that carry this page's nonce.
  */
 
 import type { PageResources } from '../../host/pane';
@@ -44,11 +44,11 @@ export function chatColorsHtml(resources: PageResources): string {
     '<div class="wheel"></div>',
     '<div class="fields">',
     '<label>Color <input class="hex" type="text" spellcheck="false" autocomplete="off"></label>',
-    '<button class="default" type="button" title="Remove your color, so the theme\'s own shows">Default</button>',
+    '<button class="default" type="button" title="Remove your color: the theme\'s own shows, or the band goes">Default</button>',
     '<p class="problem" role="alert"></p>',
     '</div>',
     '</div>',
-    '<p class="note">The thinking lines\' color is also VS Code\'s grey hint text everywhere else.</p>',
+    '<p class="note">The thinking lines\' color is also VS Code\'s grey hint text everywhere else. The bands are drawn by the chat-colors mod.</p>',
     `<script nonce="${resources.nonce}" src="${resources.mediaUrl(iroScriptFile)}"></script>`,
     `<script type="module" nonce="${resources.nonce}" src="${resources.mediaUrl(pageScriptFile)}"></script>`,
     '</body>',
@@ -75,7 +75,7 @@ function contentSecurityPolicy(resources: PageResources): string {
  */
 function partButton(definition: ChatPartDefinition): string {
   return [
-    `<button class="part" type="button" role="radio" aria-checked="false" data-part="${definition.part}" data-color-variable="${themeColorVariable(definition.colorId)}">`,
+    `<button class="part" type="button" role="radio" aria-checked="false" data-part="${definition.part}" data-color-variable="${themeColorVariable(definition.colorId)}" data-unset-text="${definition.unsetText}">`,
     `<span class="swatch"></span><span class="name">${definition.label}</span><span class="value"></span>`,
     '</button>',
   ].join('');

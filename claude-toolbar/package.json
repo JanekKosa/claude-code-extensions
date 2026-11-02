@@ -5036,7 +5036,7 @@
       },
       {
         "command": "claudeToolbar.chatColors",
-        "title": "Chat colors: show or hide the pane that colors the prompt outline and the thinking lines.",
+        "title": "Chat colors: show or hide the pane that colors the prompt outline, the thinking lines and the bands.",
         "category": "Claude Toolbar",
         "icon": "$(symbol-color)"
       }
@@ -19118,6 +19118,30 @@
           "type": "number",
           "default": 4194304,
           "description": "Context size: how many bytes of the end of the chat's transcript are read to find its latest size. Raise it if the size shows 0k while Claude answers with very long tool results.",
+          "scope": "application"
+        },
+        "claudeToolbar.promptBandColor": {
+          "type": "string",
+          "default": "",
+          "description": "Band above each of your prompts, drawn by the chat-colors mod: its color as #RRGGBB. Empty: no band.",
+          "scope": "application"
+        },
+        "claudeToolbar.notesBandColor": {
+          "type": "string",
+          "default": "",
+          "description": "Band above each of Claude's notes, drawn by the chat-colors mod: its color as #RRGGBB. Empty: no band.",
+          "scope": "application"
+        },
+        "claudeToolbar.answerBandColor": {
+          "type": "string",
+          "default": "",
+          "description": "Band above each of Claude's answers, drawn by the chat-colors mod: its color as #RRGGBB. Empty: no band.",
+          "scope": "application"
+        },
+        "claudeToolbar.bandTintPercent": {
+          "type": "number",
+          "default": 15,
+          "description": "How strongly the background of the chat-colors mod's bands shows their color: a whole number from 0 to 100.",
           "scope": "application"
         }
       }

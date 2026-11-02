@@ -61,24 +61,28 @@ hides it again.
   there keeps running.
 - If you drag the pane out of the bottom panel, the button still hides the bottom panel. Drag the pane back.
 
-In the pane you set two colors of the Claude chat:
+In the pane you set these colors of the Claude chat:
 
 - **Prompt outline**: the thin outline around the box where you type your prompt.
 - **Thinking lines**: the "Thought for 4s" lines and the text of Claude's thinking.
+- **Prompt band**, **Notes band**, **Answer band**: the tinted band above each of your prompts, each of Claude's notes
+  and each of Claude's answers. The `chat-colors` mod draws them (`chat-colors\README.md`); a band shows once you give
+  it a color, and without the mod no band shows.
 
 The pane has:
 
-- A switch at the top: Prompt outline | Thinking lines. It picks the part you set, and shows each part's color, or
-  "theme default" when you have set none.
+- A switch at the top, one button per part. It picks the part you set, and shows each part's color, or "theme default"
+  (a band: "no band") when you have set none.
 - A color wheel with a lightness slider. A color is saved when you let go of the wheel.
 - A hex field, such as `#4FA3E0`, that follows the wheel. Type a color and press Enter or leave the field to save it.
   The `#` may be left out. Anything that is not six hex digits is not saved, and the pane says so.
-- Default: removes your color, so the theme's own shows again. It is saved at once.
+- Default: removes your color, so the theme's own shows again, or the band goes. It is saved at once.
 
 ## Where the colors are saved
 
-The pane saves VS Code theme colors in your user settings, under `workbench.colorCustomizations`: the setting VS Code
-itself offers for changing a theme's colors. The chat follows at once.
+The outline and the thinking lines are VS Code theme colors, saved in your user settings under
+`workbench.colorCustomizations`: the setting VS Code itself offers for changing a theme's colors. The chat follows at
+once.
 
 | Part | Theme color | What else follows it |
 | --- | --- | --- |
@@ -96,14 +100,23 @@ itself offers for changing a theme's colors. The chat follows at once.
   setting.
 - If `workbench.colorCustomizations` holds something other than an object, the pane saves nothing and shows an error.
 
+The bands' colors are saved in the toolbar's own settings (below). The toolbar carries them to the mod in the file
+`%USERPROFILE%\.claude\claude-code-extensions\chat-view.json`, which `chat-colors\README.md` describes. It writes that
+file when VS Code starts and whenever one of those settings changes, so an edit of the file by hand does not last. If
+it cannot write the file, it shows one error.
+
 ## Settings
 
-The toolbar declares two settings of its own, for the context size, under "Claude Toolbar":
+The toolbar declares these settings of its own under "Claude Toolbar":
 
 | Setting | Default | What it does |
 | --- | --- | --- |
 | `claudeToolbar.contextRefreshMs` | 1000 | How long to wait after Claude writes to the transcript before reading the size again, in milliseconds. Writes during the wait join it, so the size changes at most once per wait. |
 | `claudeToolbar.contextTailBytes` | 4194304 (4 MB) | How many bytes of the transcript's end are read to find the latest size. Raise it if the size shows `0k` while Claude answers with very long tool results. |
+| `claudeToolbar.promptBandColor` | empty | The band above each of your prompts, as `#RRGGBB`. Empty: no band. The pane sets it. |
+| `claudeToolbar.notesBandColor` | empty | The band above each of Claude's notes, as `#RRGGBB`. Empty: no band. The pane sets it. |
+| `claudeToolbar.answerBandColor` | empty | The band above each of Claude's answers, as `#RRGGBB`. Empty: no band. The pane sets it. |
+| `claudeToolbar.bandTintPercent` | 15 | How strongly a band's background shows its color: a whole number from 0 to 100. Anything else draws as 15. |
 
 It writes two settings of other owners, in your user settings: `claudeCode.focusView` (Claude's, for the chat-view
 button) and `workbench.colorCustomizations` (VS Code's, for the Chat colors pane).

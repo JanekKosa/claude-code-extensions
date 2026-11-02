@@ -4,7 +4,7 @@
  * workbench.colorCustomizations at Global under the part's theme color, a text that is not a color rejected and
  * reported, Default removing only the part's color, nothing written when nothing changes, a refused write or a setting
  * that holds no object shown as one error, two quick saves both kept, a change made elsewhere sent at once, messages
- * the page cannot have sent ignored, and disconnecting.
+ * the page cannot have sent ignored, and disconnecting. A band's color goes the same way through its own setting.
  */
 
 import { setImmediate as nextTurn } from 'node:timers/promises';
@@ -18,6 +18,9 @@ import { FakeToolbarHost } from '../../helpers/fake-toolbar-host';
 const setting = 'workbench.colorCustomizations';
 const outline = 'inlineChatInput.border';
 const thinking = 'descriptionForeground';
+const promptBand = 'claudeToolbar.promptBandColor';
+const notesBand = 'claudeToolbar.notesBandColor';
+const answerBand = 'claudeToolbar.answerBandColor';
 
 /** A page for tests: what the logic posts is recorded, and a test sends what the page's script would. */
 class FakePage implements PanePage {
@@ -60,14 +63,18 @@ class FakePage implements PanePage {
  * The state the page would show.
  * @param promptOutline the prompt outline's color, null for theme default
  * @param thinkingLines the thinking lines' color, null for theme default
+ * @param bands the colors of the prompt, notes and answer bands, each null for no band
  * @returns the state message, without a rejection
  */
-function state(promptOutline: string | null, thinkingLines: string | null): StateMessage {
+function state(promptOutline: string | null, thinkingLines: string | null, bands: readonly (string | null)[] = [null, null, null]): StateMessage {
   return {
     type: 'state',
     parts: [
       { part: 'promptOutline', color: promptOutline },
       { part: 'thinkingLines', color: thinkingLines },
+      { part: 'promptBand', color: bands[0] },
+      { part: 'notesBand', color: bands[1] },
+      { part: 'answerBand', color: bands[2] },
     ],
   };
 }
@@ -165,6 +172,58 @@ describe('the Chat colors logic', () => {
       [],
       ['Claude Toolbar could not save the prompt outline color: workbench.colorCustomizations in your user settings is not an object, so it was left as it is.'],
     ]);
+  });
+
+  it.each([
+    ['promptBand', promptBand, ['#A1B2C3', null, null]],
+    ['notesBand', notesBand, [null, '#A1B2C3', null]],
+    ['answerBand', answerBand, [null, null, '#A1B2C3']],
+  ])('saves a %s color in its own setting at Global, in upper case, and leaves the theme colors alone', async (part, key, bands) => {
+    connectChatColors(page, host);
+    await page.send({ type: 'save', part, color: 'a1b2c3' });
+    expect([host.writes, page.posted]).toStrictEqual([[{ values: { [key]: '#A1B2C3' }, target: 'global' }], [state(null, null, bands)]]);
+  });
+
+  it("removes a band's color on Default, so it has no band", async () => {
+    host = new FakeToolbarHost({ settings: { [promptBand]: '#111111', [notesBand]: '#222222' } });
+    connectChatColors(page, host);
+    await page.send({ type: 'useDefault', part: 'promptBand' });
+    expect([host.writes, page.posted]).toStrictEqual([[{ values: { [promptBand]: undefined }, target: 'global' }], [state(null, null, [null, '#222222', null])]]);
+  });
+
+  it("writes nothing when a band's color stays: the same color again, or Default for a band without one", async () => {
+    host = new FakeToolbarHost({ settings: { [promptBand]: '#111111' } });
+    connectChatColors(page, host);
+    await page.send({ type: 'save', part: 'promptBand', color: '#111111' }, { type: 'useDefault', part: 'answerBand' });
+    expect(host.writes).toStrictEqual([]);
+  });
+
+  it('shows a band setting that holds no color as no band, as the bridge file carries it', async () => {
+    host = new FakeToolbarHost({ settings: { [promptBand]: '', [notesBand]: 'red', [answerBand]: 7 } });
+    connectChatColors(page, host);
+    await page.send({ type: 'ready' });
+    expect(page.posted).toStrictEqual([state(null, null)]);
+  });
+
+  it('writes no band for a typed text that is not a color, and reports it in the state', async () => {
+    connectChatColors(page, host);
+    await page.send({ type: 'save', part: 'notesBand', color: 'blue' });
+    expect([host.writes, page.posted]).toStrictEqual([[], [{ ...state(null, null), rejected: { part: 'notesBand', text: 'blue' } }]]);
+  });
+
+  it('shows one error naming the band when VS Code refuses the write', async () => {
+    host.writeSettings = async () => {
+      throw new Error('Unable to write to User Settings.');
+    };
+    connectChatColors(page, host);
+    await page.send({ type: 'save', part: 'answerBand', color: '#222222' });
+    expect(host.errors).toStrictEqual(['Claude Toolbar could not save the answer band color: Unable to write to User Settings.']);
+  });
+
+  it('sends the state when a band setting changes elsewhere', () => {
+    connectChatColors(page, host);
+    host.changeSettings({ [answerBand]: '#333333' });
+    expect(page.posted).toStrictEqual([state(null, null, [null, null, '#333333'])]);
   });
 
   it('sends the state when the setting changes elsewhere, and not for another setting', () => {

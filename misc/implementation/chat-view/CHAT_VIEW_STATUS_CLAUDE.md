@@ -51,6 +51,11 @@ Kept current by the main session. Leads add one row per run to the table below; 
   files, 16 tests. The main session re-ran the checks (all green) and installed it at 10:26. X2: 24 of 24 mutants
   caught, no test missing; the installed package's SHA-256 166E1810...05F35 is the one X2 checked. The user still
   has to reload the window and try the pane.
+- 2026-11-02: the user asked to fix "chat-colors draws nothing" (`setup.ps1` installs the mod again, and T2 had left
+  no writer). The bridge writer is back (`src\bridge\`, `utils\atomic-write.ts`), rebuilt from section 8.2 of the worker
+  brief, as T1's code was never committed: the band colours and tint are owned settings, default no band, and the pane
+  has three band parts. The 2026-10-24 objection to how a band looks is not answered: the VS Code chat's frame around a
+  mod's drawing is outside this repo, and needs the user's live check.
 - Waiting for the user: the live check of the pane; a license for the repo; whether to delete `chat-filter\`, `hide-actions\` and
   `chat-colors\` (all no longer used), remove the `claude-code-extensions` plugin marketplace, and delete the old
   bridge file (not blocking).

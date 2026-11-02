@@ -20,6 +20,14 @@ test('R1 hex digits of either case are a colour', async ($, on) => {
   expect(await (await mountPrompt($, 'vscode', 'Fix it')).drawn()).toEqual(bandTree('#a1B2c3', ALPHA.default))
 })
 
+test("R1 the exact text the toolbar's writer writes colours each kind", async ($, on) => {
+  // The text claude-toolbar\tests\bridge\bridge-writer.test.ts pins: change them together.
+  const text = '{"colors":{"prompt":"#4FA3E0","notes":"#D29922","answer":"#3FB950"},"tintPercent":15}\n'
+  await startSession($, on, { value: text })
+
+  expect(await (await mountPrompt($, 'vscode', 'Fix it')).drawn()).toEqual(bandTree('#4FA3E0', ALPHA.default))
+})
+
 // ── A colour that is not #RRGGBB ──
 
 test('R2 null, a short, a long, a named or a non-string colour reads as no band', async ($, on) => {

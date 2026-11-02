@@ -15,7 +15,7 @@ export const chatColorsButton: ToolbarButton = {
     {
       id: 'toggle',
       icon: 'symbol-color',
-      tooltip: 'Chat colors: show or hide the pane that colors the prompt outline and the thinking lines.',
+      tooltip: 'Chat colors: show or hide the pane that colors the prompt outline, the thinking lines and the bands.',
       when: always,
       onClick: togglePane(chatColorsPane),
     },

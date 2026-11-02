@@ -1,11 +1,12 @@
 /**
  * The logic behind the Chat colors page. It answers every message of the page with the state the page shows (each
- * part's color in the user's `workbench.colorCustomizations`, or none), after doing what the message asks: save a
- * color for a part (from the wheel or the hex field) or remove it (Default). A save changes one key of the user's
- * (Global) `workbench.colorCustomizations` and nothing else (settings\color-customizations.ts). Messages are carried out
- * one at a time, each reading the setting as it starts, so two quick saves never undo one another. A write VS Code
- * refuses, or a setting that holds no object, is shown as one error. The state is also sent whenever the setting
- * changes elsewhere. A message the page cannot have sent changes nothing and gets no answer.
+ * part's color in the user's settings, or none), after doing what the message asks: save a color for a part (from the
+ * wheel or the hex field) or remove it (Default). A save for a theme-colored part changes one key of the user's
+ * (Global) `workbench.colorCustomizations` and nothing else (settings\color-customizations.ts); a save for a band
+ * changes that band's own setting, and the bridge writer follows. Messages are carried out one at a time, each reading
+ * the settings as it starts, so two quick saves never undo one another. A write VS Code refuses, or a
+ * `workbench.colorCustomizations` that holds no object, is shown as one error. The state is also sent whenever the
+ * settings change elsewhere. A message the page cannot have sent changes nothing and gets no answer.
  */
 
 import type { PaneHost, PanePage } from '../../host/pane';
@@ -15,7 +16,7 @@ import type { RejectedColor, StateMessage } from '../../media/chat-colors-protoc
 import { customizedColor, withThemeColor } from '../../settings/color-customizations';
 import { toolbarTitle } from '../../toolbar/identity';
 import { errorText } from '../../utils/error-text';
-import { typedHexColor } from '../../utils/hex-color';
+import { normalizedHexColor, typedHexColor } from '../../utils/hex-color';
 import { type Enqueue, serialQueue } from '../../utils/serial-queue';
 import { type ChatPartDefinition, chatParts, partNamed } from './chat-parts';
 
@@ -25,8 +26,11 @@ type Request =
   | { readonly type: 'save'; readonly part: ChatPartDefinition; readonly color: string }
   | { readonly type: 'useDefault'; readonly part: ChatPartDefinition };
 
-/** The setting the pane reads and changes. */
+/** The setting that holds the theme-colored parts' colors. */
 const customizationsSetting = vscodeWorkbench.colorCustomizationsSetting;
+
+/** The settings whose change the page must show. */
+const watchedSettings = [customizationsSetting, ...chatParts.flatMap(({ setting }) => (setting === undefined ? [] : [setting.key]))];
 
 // ---------------------------------------------------------------------------------------------------------------
 // Connecting
@@ -40,7 +44,7 @@ const customizationsSetting = vscodeWorkbench.colorCustomizationsSetting;
  */
 export function connectChatColors(page: PanePage, host: PaneHost): Disposable {
   const enqueue = serialQueue();
-  const watch = host.watchSettings([customizationsSetting], () => page.post(stateMessage(host)));
+  const watch = host.watchSettings(watchedSettings, () => page.post(stateMessage(host)));
   const listening = page.onMessage((message) => void answer(page, host, enqueue, request(message)));
   return {
     dispose: () => {
@@ -100,8 +104,7 @@ async function saveColor(host: PaneHost, part: ChatPartDefinition, text: string)
 }
 
 /**
- * Sets or removes a part's theme color in the user's (Global) `workbench.colorCustomizations`, merged into what the
- * setting holds now, and writes only when that changes it. When the merge or the write fails, shows one error.
+ * Sets or removes a part's color in the user's (Global) settings. When that fails, shows one error.
  * @param host the logic's host
  * @param part the part
  * @param color the color, or undefined to remove the user's color
@@ -109,11 +112,34 @@ async function saveColor(host: PaneHost, part: ChatPartDefinition, text: string)
  */
 async function writeColor(host: PaneHost, part: ChatPartDefinition, color: string | undefined): Promise<void> {
   try {
-    const write = withThemeColor(host.readUserSetting(customizationsSetting), part.colorId, color);
-    if (write.changes) await host.writeSettings({ [customizationsSetting]: write.value }, 'global');
+    await (part.setting === undefined ? writeThemeColor(host, part.colorId, color) : writeOwnColor(host, part.setting.key, color));
   } catch (error) {
     host.showError(`${toolbarTitle} could not save the ${part.label.toLowerCase()} color: ${errorText(error)}`);
   }
+}
+
+/**
+ * Sets or removes a theme color in `workbench.colorCustomizations`, merged into what the setting holds now, and writes
+ * only when that changes it.
+ * @param host the logic's host
+ * @param colorId the theme color's id
+ * @param color the color, or undefined to remove the user's color
+ * @returns when written, or nothing to write
+ */
+async function writeThemeColor(host: PaneHost, colorId: string, color: string | undefined): Promise<void> {
+  const write = withThemeColor(host.readUserSetting(customizationsSetting), colorId, color);
+  if (write.changes) await host.writeSettings({ [customizationsSetting]: write.value }, 'global');
+}
+
+/**
+ * Sets or removes a band's color in its own setting, and writes only when that changes it.
+ * @param host the logic's host
+ * @param key the setting's full key
+ * @param color the color, or undefined to remove the user's color
+ * @returns when written, or nothing to write
+ */
+async function writeOwnColor(host: PaneHost, key: string, color: string | undefined): Promise<void> {
+  if (host.readUserSetting(key) !== color) await host.writeSettings({ [key]: color }, 'global');
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -121,18 +147,29 @@ async function writeColor(host: PaneHost, part: ChatPartDefinition, color: strin
 // ---------------------------------------------------------------------------------------------------------------
 
 /**
- * Builds the state the page shows, from the setting's current value in the user's settings.
- * @param host where the setting is read
+ * Builds the state the page shows, from the settings' current values in the user's settings.
+ * @param host where the settings are read
  * @param rejected the rejected text to report, if any
  * @returns the state message
  */
 function stateMessage(host: Pick<PaneHost, 'readUserSetting'>, rejected?: RejectedColor): StateMessage {
-  const customizations = host.readUserSetting(customizationsSetting);
   return {
     type: 'state',
-    parts: chatParts.map(({ part, colorId }) => ({ part, color: customizedColor(customizations, colorId) })),
+    parts: chatParts.map((definition) => ({ part: definition.part, color: savedColor(host, definition) })),
     ...(rejected === undefined ? {} : { rejected }),
   };
+}
+
+/**
+ * Reads a part's color in the user's settings.
+ * @param host where the settings are read
+ * @param definition the part
+ * @returns a theme-colored part's color as the setting holds it, a band's as the bridge file carries it; null for none
+ */
+function savedColor(host: Pick<PaneHost, 'readUserSetting'>, definition: ChatPartDefinition): string | null {
+  return definition.setting === undefined
+    ? customizedColor(host.readUserSetting(customizationsSetting), definition.colorId)
+    : normalizedHexColor(host.readUserSetting(definition.setting.key));
 }
 
 /**

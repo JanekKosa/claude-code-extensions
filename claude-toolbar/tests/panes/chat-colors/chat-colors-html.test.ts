@@ -1,8 +1,9 @@
 /**
  * Tests the Chat colors page's HTML: its content security policy (nothing by default, the stylesheet from the page's
  * source, scripts only with the nonce), every file loaded through the host's media URLs and nothing inline, iro.js
- * loaded before the page's module script, the switch at the top with its two parts in order (each naming the CSS
- * variable of its theme color), then the wheel, the hex field, Default, the problem line and the note.
+ * loaded before the page's module script, the switch at the top with its parts in order (each naming the CSS variable
+ * of its theme color and what it says while unset), then the wheel, the hex field, Default, the problem line and the
+ * note.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -47,13 +48,19 @@ describe('the Chat colors page', () => {
     expect([/<script(?![^>]*\ssrc=)[^>]*>/.test(html), /<style/.test(html), /\sstyle=/.test(html), /\son[a-z]+=/.test(html)]).toEqual([false, false, false, false]);
   });
 
-  it("starts with the switch: Prompt outline, then Thinking lines, each naming its theme color's CSS variable", () => {
+  it("starts with the switch: the two theme-colored parts, then the three bands, each naming its CSS variable and unset text", () => {
     const body = html.slice(html.indexOf('<body>'));
     expect(body.startsWith('<body>\n<div class="switch" role="radiogroup"')).toBe(true);
-    expect([all(/data-part="([^"]*)"/g), all(/data-color-variable="([^"]*)"/g), all(/<span class="name">([^<]*)<\/span>/g)]).toEqual([
-      ['promptOutline', 'thinkingLines'],
-      ['--vscode-inlineChatInput-border', '--vscode-descriptionForeground'],
-      ['Prompt outline', 'Thinking lines'],
+    expect([
+      all(/data-part="([^"]*)"/g),
+      all(/data-color-variable="([^"]*)"/g),
+      all(/data-unset-text="([^"]*)"/g),
+      all(/<span class="name">([^<]*)<\/span>/g),
+    ]).toEqual([
+      ['promptOutline', 'thinkingLines', 'promptBand', 'notesBand', 'answerBand'],
+      ['--vscode-inlineChatInput-border', '--vscode-descriptionForeground', '--vscode-foreground', '--vscode-foreground', '--vscode-foreground'],
+      ['theme default', 'theme default', 'no band', 'no band', 'no band'],
+      ['Prompt outline', 'Thinking lines', 'Prompt band', 'Notes band', 'Answer band'],
     ]);
   });
 
@@ -63,8 +70,10 @@ describe('the Chat colors page', () => {
     expect(parts.filter((part) => !after.includes(part))).toEqual([]);
   });
 
-  it('says that the thinking lines\' color is also VS Code\'s grey hint text', () => {
-    expect(all(/<p class="note">([^<]*)<\/p>/g)).toEqual(["The thinking lines' color is also VS Code's grey hint text everywhere else."]);
+  it("says that the thinking lines' color is also VS Code's grey hint text, and what draws the bands", () => {
+    expect(all(/<p class="note">([^<]*)<\/p>/g)).toEqual([
+      "The thinking lines' color is also VS Code's grey hint text everywhere else. The bands are drawn by the chat-colors mod.",
+    ]);
   });
 
   it('is titled Chat colors', () => {

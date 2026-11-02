@@ -5,7 +5,7 @@
  */
 
 /** The parts of the Claude chat whose color the pane sets. */
-export type ChatPart = 'promptOutline' | 'thinkingLines';
+export type ChatPart = 'promptOutline' | 'thinkingLines' | 'promptBand' | 'notesBand' | 'answerBand';
 
 /** One part, as the page shows it. */
 export interface PartState {
@@ -27,7 +27,7 @@ export interface RejectedColor {
 export interface StateMessage {
   /** Always 'state'. */
   readonly type: 'state';
-  /** The two parts, in the switch's order. */
+  /** The parts, in the switch's order. */
   readonly parts: readonly PartState[];
   /** Set when the message answered saved a typed text that is not a color. */
   readonly rejected?: RejectedColor;
@@ -35,7 +35,8 @@ export interface StateMessage {
 
 /**
  * The page's messages to the logic: `ready` (the page has loaded: send the state), `save` (save this color for a
- * part, from the wheel or typed into the hex field) and `useDefault` (remove the user's color: the theme's shows).
+ * part, from the wheel or typed into the hex field) and `useDefault` (remove the user's color: the theme's shows, or
+ * the band goes).
  */
 export type PageMessage =
   | { readonly type: 'ready' }

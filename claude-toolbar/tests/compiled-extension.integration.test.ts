@@ -2,7 +2,8 @@
  * The compiled-extension check. It loads the built extension as VS Code does: package.json's main, as CommonJS,
  * with require('vscode') answered by the fake 'vscode' (tests\fakes\vscode.ts). It runs activate once and checks what
  * that did: exactly the commands package.json declares, a webview view provider for exactly the views it declares,
- * and one subscription for each, plus one for the context size. It refuses a folder that does not hold the current build, and every file of dist\
+ * and one subscription for each, plus one for the context size and one for the bridge file, which it writes under a
+ * temporary home folder, never the real one. It refuses a folder that does not hold the current build, and every file of dist\
  * outside the media folder must be CommonJS (the media folder's files run in a webview). Each of these fails as its
  * own test, with its reason.
  *
@@ -13,11 +14,12 @@
  * tests read, so what the compiled code registers shows in it.
  */
 
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { compileFunction } from 'node:vm';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import * as fakeVscodeApi from './fakes/vscode';
 import { filesUnder, folderKind, folderToCheck, isMediaFile, notBuiltReason } from './helpers/compiled-folder';
 import { type StandIn, standInForModule } from './helpers/module-stand-in';
@@ -75,17 +77,22 @@ function notCommonJs(path: string): string[] {
 describe(`the compiled extension in ${folder} (${kind})`, () => {
   const context: ExtensionContext = { subscriptions: [], extensionUri: fakeVscodeApi.Uri.file(folder) };
   let vscodeStandIn: StandIn | undefined;
+  const home = mkdtempSync(join(tmpdir(), 'claude-toolbar-home-'));
   let activated = false;
 
   /**
    * Activates the built extension the first time a test needs it, as VS Code does at startup: refuses a folder that
-   * does not hold the current build, answers require('vscode') with the fake, loads package.json's main and runs its
-   * activate.
+   * does not hold the current build, points the home folder at a temporary one (and refuses to go on if that failed,
+   * as the extension writes the bridge file there), answers require('vscode') with the fake, loads package.json's main
+   * and runs its activate.
    */
   function activateOnce(): void {
     if (activated) return;
     const notBuilt = notBuiltReason(folder, kind, projectRoot);
     if (notBuilt !== undefined) throw new Error(notBuilt);
+    vi.stubEnv('USERPROFILE', home);
+    vi.stubEnv('HOME', home);
+    if (homedir() !== home) throw new Error(`The home folder is still ${homedir()}: a test must never write the real bridge file.`);
     vscodeStandIn = standInForModule('vscode', fakeVscodeApi);
     const entry = join(folder, manifest.main);
     (createRequire(entry)(entry) as CompiledExtension).activate(context);
@@ -95,6 +102,8 @@ describe(`the compiled extension in ${folder} (${kind})`, () => {
   afterAll(() => {
     for (const subscription of context.subscriptions) subscription.dispose();
     vscodeStandIn?.remove();
+    vi.unstubAllEnvs();
+    rmSync(home, { recursive: true, force: true, maxRetries: 5 });
   });
 
   it(`is built: ${builtRule}`, () => {
@@ -119,8 +128,14 @@ describe(`the compiled extension in ${folder} (${kind})`, () => {
     expect([...fakeVscodeApi.fakeVscode.viewProviders.keys()]).toEqual(declaredViews);
   });
 
-  it(`keeps ${declaredIds.length + declaredViews.length + 1} subscriptions: one per command, one per view, one for the context size`, () => {
+  it(`keeps ${declaredIds.length + declaredViews.length + 2} subscriptions: one per command, one per view, one for the context size, one for the bridge file`, () => {
     activateOnce();
-    expect(context.subscriptions).toHaveLength(declaredIds.length + declaredViews.length + 1);
+    expect(context.subscriptions).toHaveLength(declaredIds.length + declaredViews.length + 2);
+  });
+
+  it('writes the bridge file under the home folder when it starts', async () => {
+    activateOnce();
+    const bridgeFile = join(home, '.claude', 'claude-code-extensions', 'chat-view.json');
+    await vi.waitFor(() => expect(JSON.parse(readFileSync(bridgeFile, 'utf8'))).toMatchObject({ colors: { prompt: null, notes: null, answer: null } }));
   });
 });

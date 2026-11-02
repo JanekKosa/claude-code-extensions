@@ -74,6 +74,7 @@ first.
     Windows) ● is 43% of the font size tall with its middle 7% lower than ○'s (measured with WPF's
     `FormattedText.BuildGeometry`). Use ◉ (U+25C9) for picked: it falls back to a font where it has ○'s exact size
     and middle.
+- A mod can start a turn: `$.prompt.submit({ text })` queues a prompt that wakes an idle session (`decisions-pane` hands the person's answers over this way, so it needs no background watch). `asUser: true` sends it bare, without the plugin frame.
 - A mod can write files through another program: `$.process.run([node, script, ...args])` takes an argument vector
   with no shell, so the person's words need no quoting (`decisions-pane` runs the agent team's `register.mjs` so its
   lock and layout hold).

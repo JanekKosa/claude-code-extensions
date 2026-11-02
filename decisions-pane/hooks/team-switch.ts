@@ -1,5 +1,5 @@
 /**
- * Looking at the agent team's switch for this chat: the session's id, the team's orchestration.config.json (the root
+ * Looking at the agent team's switch for this chat, which tells whose scripts the chat uses: the session's id, the team's orchestration.config.json (the root
  * of the team's own files `teamState.folder` and the switch folder `agentTeam.onFolder` under it), the five folder
  * variables the root may name, and whether the session's marker is there. It only looks: it never writes, changes or
  * removes a marker, and it reads nothing but the team's settings and the marker.
@@ -17,6 +17,33 @@ import { onFolderOf, stateFolderOf, stateRootOf, teamOnMarkerPath } from './team
 
 /** What looking at the switch uses of the engine interface. */
 export type SwitchDollar = Pick<EngineInterface, 'session' | 'env' | 'fs'>
+
+/** Whose scripts a chat uses: the agent team's, in a chat switched on for it, or the `decisions` skill's, in any other. */
+export type ChatMode = 'team' | 'standalone'
+
+/**
+ * Gives the options with the `decisions` skill's script as the register script. Its folder holds a settings file of
+ * the same form as the team's, so everything that reads the script's folder works on it unchanged.
+ *
+ * @param settings the mod's options
+ * @returns the same options for a chat outside the agent team
+ */
+export function standaloneSettings(settings: Settings): Settings {
+  return { ...settings, registerScript: settings.standaloneScript }
+}
+
+/**
+ * Looks at whose scripts this chat uses.
+ *
+ * @param $ the engine interface
+ * @param settings the mod's options
+ * @returns the chat's mode; null when the look failed, so the caller keeps what it knew
+ */
+export async function lookAtChatMode($: SwitchDollar, settings: Settings): Promise<ChatMode | null> {
+  const isTeam = await lookAtSwitch($, settings)
+
+  return isTeam === null ? null : isTeam ? 'team' : 'standalone'
+}
 
 /**
  * Looks at whether the agent team is switched on for this chat. The session id is read at every look: after a `/clear`

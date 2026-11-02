@@ -229,9 +229,9 @@ function Install-SkillLinks {
 
 function Add-MissingPartWarnings {
     <# What the setup cannot supply: the mod is installed, but it draws nothing without it. #>
-    $registerScript = Join-Path $HomeFolder '.claude\skills\orchestrate-agents\scripts\register.mjs'
+    $registerScript = Join-Path $HomeFolder '.claude\skills\decisions\scripts\register.mjs'
     if (-not (Test-Path -LiteralPath $registerScript)) {
-        $Warnings.Add("decisions-pane: the agent team is not here ($registerScript). The pane stays empty until it is.")
+        $Warnings.Add("decisions-pane: the decisions skill is not here ($registerScript). Run scripts\install.ps1 in the agent-config repository.")
     }
 }
 

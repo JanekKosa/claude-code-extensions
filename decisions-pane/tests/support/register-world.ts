@@ -28,6 +28,15 @@ export const HOME = 'C:\\Users\\me'
 export const SCRIPT = `${HOME}\\.claude\\skills\\orchestrate-agents\\scripts\\register.mjs`
 export const CONFIG = `${HOME}\\.claude\\skills\\orchestrate-agents\\orchestration.config.json`
 
+/** The `/decisions` skill's script, its settings file and text under this home. */
+export const STANDALONE_SCRIPT = `${HOME}\\.claude\\skills\\decisions\\scripts\\register.mjs`
+export const STANDALONE_CONFIG = `${HOME}\\.claude\\skills\\decisions\\orchestration.config.json`
+export const STANDALONE_CONFIG_TEXT = JSON.stringify({
+  teamState: { folder: '%USERPROFILE%\\.claude\\state\\decisions' },
+  register: { folder: 'decisions', openFile: 'OPEN_DECISIONS_CLAUDE.md' },
+  agentTeam: { onFolder: 'on' },
+})
+
 /**
  * The agent team's switch: the session's id, the root of the team's own files as its settings write it
  * (`teamState.folder`) and as filled in from USERPROFILE, the switch folder under it (`agentTeam.onFolder`), and the
@@ -92,6 +101,10 @@ export type World = {
   readonly failStats: Map<string, number>
   /** What register.mjs answers next: exit code 0 records the answer as it does, any other fails with `stderr`. */
   failNext: { exitCode: number; stderr: string } | null
+  /** What the next `register.mjs handover` prints; a run takes it, as the real one marks what it hands over. */
+  handover: string
+  /** Every prompt the mod sent to the chat, in order. */
+  readonly prompts: string[]
 }
 
 /** One entry as a test describes it; the rest is filled in. */
@@ -266,6 +279,8 @@ export async function startWorld($: Engine, on: On, before?: (world: World) => v
     failReads: new Map(),
     failStats: new Map(),
     failNext: null,
+    handover: '',
+    prompts: [],
   }
   const versions = new Map<string, number>()
   const versionOf = (path: string, text: string) => {
@@ -342,9 +357,20 @@ export async function startWorld($: Engine, on: On, before?: (world: World) => v
       return { value: { exitCode: failed.exitCode, stdout: '', stderr: failed.stderr, isStdoutTruncated: false, isStderrTruncated: false } }
     }
 
+    const stdout = args[0] === 'handover' ? world.handover : ''
+
+    if (args[0] === 'handover') {
+      world.handover = ''
+    }
+
     recordAnswerAsRegisterDoes(world, args)
 
-    return { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    return { value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('prompt.submit', (_, e) => {
+    world.prompts.push(e.text)
+
+    return { text: e.text }
   })
   on('ui.open', (_, e) => {
     world.openPanes.set(e.id, e.title ?? e.id)

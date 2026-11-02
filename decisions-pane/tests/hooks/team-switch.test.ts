@@ -1,8 +1,8 @@
 /**
- * Tests of the agent team's switch: the pane shows only in a chat the person switched the team on for with
- * /software-developer-agent, which writes the session's marker `<teamState.folder>\<agentTeam.onFolder>\<session id>`,
- * the root's `%NAME%` parts filled in. The pane looks at the marker at session start and at every look of the poll,
- * and its command says how to switch the team on in a chat that is not.
+ * Tests of the agent team's switch: a chat switched on with /software-developer-agent, which writes the session's marker
+ * `<teamState.folder>\<agentTeam.onFolder>\<session id>`, the root's `%NAME%` parts filled in, uses the team's scripts;
+ * any other chat uses the `decisions` skill's. The pane shows in both. The mod looks at the marker at session start and
+ * at every look of the poll.
  */
 import { expect, test } from 'claude-code/testing'
 
@@ -14,11 +14,13 @@ import {
   ON_FOLDER,
   OPEN_FILE,
   REPO,
+  SCRIPT,
   SESSION_ID,
+  STANDALONE_CONFIG,
+  STANDALONE_SCRIPT,
   STATE_FOLDER_SETTING,
   STATE_ROOT,
   mountPane,
-  paneText,
   poll,
   runCommand,
   startWorld,
@@ -26,11 +28,8 @@ import {
   switchOn,
   writeOpen,
 } from '../support/register-world'
+import type { Engine } from 'claude-code/testing'
 import type { World } from '../support/register-world'
-
-/** What the command says in a chat the team is not switched on for: the text the task lead fixed. */
-const NOT_ON =
-  'The agent team is not on in this chat. Type /software-developer-agent to switch it on; the Decisions pane then shows here.'
 
 /** The register settings of a team config a test writes. */
 const REGISTER = { folder: 'decisions', openFile: 'OPEN_DECISIONS_CLAUDE.md' }
@@ -61,85 +60,82 @@ const writeRoot = (world: World, folder: unknown) =>
   world.files.set(CONFIG, JSON.stringify({ teamState: { folder }, register: REGISTER, agentTeam: { onFolder: ON_FOLDER } }))
 
 /**
- * Lists the paths the mod asked the file system about under the session's repo: the register and its search.
+ * Lists the paths the mod asked about other than the two settings files and the session's repo: outside a team chat by
+ * its id, its switch folder setting or its root, the mod looks for no marker at all. (The test kit hands the stand-ins
+ * each path resolved and normalised, so a marker planted at a raw path such as `...\team-on\..` would never be found:
+ * what the mod asks for is the reliable sign.)
  *
  * @param world the stand-ins
- * @param from the first access to look at
  * @returns those paths, in order
  */
-const repoAccesses = (world: World, from = 0) => world.accesses.slice(from).filter(path => path.startsWith(`${REPO}\\`))
+const beyondSettings = (world: World) =>
+  world.accesses.filter(path => path !== CONFIG && path !== STANDALONE_CONFIG && !path.startsWith(`${REPO}\\`))
 
 /**
- * Lists the paths the mod asked about other than the switch's own two: the team's settings and the session's marker.
+ * Answers an entry in the pane and tells which script recorded the answer: that is whose scripts the chat uses.
  *
+ * @param $ the test's engine
  * @param world the stand-ins
- * @param marker the marker's path
- * @returns those paths, in order
+ * @param id the entry to answer
+ * @returns the script's path
  */
-const beyondSwitch = (world: World, marker = MARKER) => world.accesses.filter(path => path !== CONFIG && path !== marker)
+const answeringScript = async ($: Engine, world: World, id = 'D-12') => {
+  const ui = await mountPane($)
 
-/**
- * Lists the paths the mod asked about other than the team's settings: in a chat ruled off by its id, its switch folder
- * setting or its root, the pane looks for no marker at all. (The test kit hands the stand-ins each path resolved
- * and normalised, so a marker planted at a raw path such as `...\team-on\..` would never be found: what
- * the pane asks for is the reliable sign.)
- *
- * @param world the stand-ins
- * @returns those paths, in order
- */
-const beyondSettings = (world: World) => world.accesses.filter(path => path !== CONFIG)
+  await ui.press({ key: `submit:${REPO}::${id}` })
+  await ui.unmount()
 
-// ── Off and on ──
+  return world.programs[world.programs.length - 1]?.[1]
+}
 
-test('S1 in a chat not switched on, waiting decisions open no pane, give no rows, and no other file is touched', async ($, on) => {
+// ── Team chat or not ──
+
+test('S1 in a chat not switched on for the team, waiting decisions open the pane and answers use the skill\'s script', async ($, on) => {
   const world = await startWorld($, on, w => {
     switchOff(w)
     writeOpen(w, [{ id: 'D-12' }])
   })
 
   await poll(world)
-  await poll(world)
 
-  const ui = await mountPane($)
-
-  expect(world.log).toEqual([])
-  expect(world.openPanes.size).toBe(0)
-  expect(await paneText(ui)).toContain('No decisions wait for you.')
-  expect(world.accesses).toContain(MARKER)
-  expect(beyondSwitch(world)).toEqual([])
-  await ui.unmount()
+  expect(world.log).toEqual([OPENED_ONE])
+  expect(await answeringScript($, world)).toBe(STANDALONE_SCRIPT)
 })
 
-test('S2 in a switched-on chat the pane opens as before, the marker looked at before the register', async ($, on) => {
+test('S1b without the agent team on the machine at all, the pane still shows', async ($, on) => {
+  const world = await startWorld($, on, w => {
+    switchOff(w)
+    w.files.delete(CONFIG)
+    writeOpen(w, [{ id: 'D-12' }])
+  })
+
+  expect(world.log).toEqual([OPENED_ONE])
+})
+
+test('S2 in a team chat the pane opens as before, the marker looked at before the register', async ($, on) => {
   const world = await startWorld($, on, w => writeOpen(w, [{ id: 'D-12' }]))
 
   expect(world.log).toEqual([OPENED_ONE])
   expect(world.accesses.indexOf(MARKER)).toBeGreaterThanOrEqual(0)
   expect(world.accesses.indexOf(MARKER)).toBeLessThan(world.accesses.indexOf(OPEN_FILE))
+  expect(await answeringScript($, world)).toBe(SCRIPT)
 })
 
-test('S3 a marker written after the chat started shows the pane at the next look, without a reload', async ($, on) => {
+test('S3 a marker written after the chat started makes it a team chat at the next look, without a reload', async ($, on) => {
   const world = await startWorld($, on, w => {
     switchOff(w)
     writeOpen(w, [{ id: 'D-12' }])
   })
 
-  await poll(world)
-  expect(world.log).toEqual([])
-
   switchOn(world)
   await poll(world)
 
-  const ui = await mountPane($)
-
-  expect(world.log).toEqual([OPENED_ONE])
-  expect(await paneText(ui)).toContain('Should a rejected invoice be retried?')
-  await ui.unmount()
+  expect(await answeringScript($, world)).toBe(SCRIPT)
 })
 
-// ── What counts as off ──
+// ── What counts as outside the team ──
 
-/** Session ids that count as off. */
+/** Session ids that count as outside the team. */
 const UNSAFE_IDS: readonly (readonly [string, unknown])[] = [
   ['missing', undefined],
   ['not a string', 42],
@@ -156,7 +152,7 @@ const UNSAFE_IDS: readonly (readonly [string, unknown])[] = [
 ]
 
 for (const [label, id] of UNSAFE_IDS) {
-  test(`S4 a session id that is ${label} counts as off, and no marker is looked for`, async ($, on) => {
+  test(`S4 a session id that is ${label} counts as outside the team, and no marker is looked for`, async ($, on) => {
     const world = await startWorld($, on, w => {
       w.sessionId = id
       writeOpen(w, [{ id: 'D-12' }])
@@ -164,12 +160,12 @@ for (const [label, id] of UNSAFE_IDS) {
 
     await poll(world)
 
-    expect(world.log).toEqual([])
     expect(beyondSettings(world)).toEqual([])
+    expect(await answeringScript($, world)).toBe(STANDALONE_SCRIPT)
   })
 }
 
-test('S4b a session id of 128 letters, digits and dashes counts as on', async ($, on) => {
+test('S4b a session id of 128 letters, digits and dashes counts as a team chat', async ($, on) => {
   const id = `${'a1-'.repeat(42)}ab`
   const world = await startWorld($, on, w => {
     switchOff(w)
@@ -179,11 +175,11 @@ test('S4b a session id of 128 letters, digits and dashes counts as on', async ($
   })
 
   expect(id).toHaveLength(128)
-  expect(world.log).toEqual([OPENED_ONE])
+  expect(await answeringScript($, world)).toBe(SCRIPT)
 })
 
 /**
- * Team settings whose switch folder counts as off, each with the first rule of the team's it breaks; the marker under
+ * Team settings whose switch folder counts as outside the team, each with the first rule of the team's it breaks; the marker under
  * the usual folder stays, as a fallback would find it.
  */
 const UNSAFE_FOLDERS: readonly (readonly [string, Readonly<Record<string, unknown>>])[] = [
@@ -213,7 +209,7 @@ const UNSAFE_FOLDERS: readonly (readonly [string, Readonly<Record<string, unknow
 ]
 
 for (const [label, settings] of UNSAFE_FOLDERS) {
-  test(`S5 a switch folder setting that is ${label} counts as off, and no marker is looked for`, async ($, on) => {
+  test(`S5 a switch folder setting that is ${label} counts as outside the team, and no marker is looked for`, async ($, on) => {
     const world = await startWorld($, on, w => {
       w.files.set(CONFIG, JSON.stringify({ teamState: TEAM_STATE, register: REGISTER, ...settings }))
       writeOpen(w, [{ id: 'D-12' }])
@@ -221,12 +217,12 @@ for (const [label, settings] of UNSAFE_FOLDERS) {
 
     await poll(world)
 
-    expect(world.log).toEqual([])
     expect(beyondSettings(world)).toEqual([])
+    expect(await answeringScript($, world)).toBe(STANDALONE_SCRIPT)
   })
 }
 
-test('S5b a switch folder with a space and dots in its name counts as on', async ($, on) => {
+test('S5b a switch folder with a space and dots in its name counts as a team chat', async ($, on) => {
   const world = await startWorld($, on, w => {
     switchOff(w)
     w.files.set(CONFIG, JSON.stringify({ teamState: TEAM_STATE, register: REGISTER, agentTeam: { onFolder: 'team on.v2' } }))
@@ -234,10 +230,10 @@ test('S5b a switch folder with a space and dots in its name counts as on', async
     writeOpen(w, [{ id: 'D-12' }])
   })
 
-  expect(world.log).toEqual([OPENED_ONE])
+  expect(await answeringScript($, world)).toBe(SCRIPT)
 })
 
-test('S5c a switch folder of several parts joined by backslashes counts as on', async ($, on) => {
+test('S5c a switch folder of several parts joined by backslashes counts as a team chat', async ($, on) => {
   const world = await startWorld($, on, w => {
     switchOff(w)
     w.files.set(CONFIG, JSON.stringify({ teamState: TEAM_STATE, register: REGISTER, agentTeam: { onFolder: 'switch\\team on' } }))
@@ -245,12 +241,12 @@ test('S5c a switch folder of several parts joined by backslashes counts as on', 
     writeOpen(w, [{ id: 'D-12' }])
   })
 
-  expect(world.log).toEqual([OPENED_ONE])
+  expect(await answeringScript($, world)).toBe(SCRIPT)
 })
 
 // ── The root of the team's own files ──
 
-test('S6 a marker only at the old place under TEMP counts as off, and the old place is never looked at', async ($, on) => {
+test('S6 a marker only at the old place under TEMP counts as outside the team, and the old place is never looked at', async ($, on) => {
   const world = await startWorld($, on, w => {
     switchOff(w)
     w.files.set(OLD_MARKER, 'x')
@@ -259,12 +255,12 @@ test('S6 a marker only at the old place under TEMP counts as off, and the old pl
 
   await poll(world)
 
-  expect(world.log).toEqual([])
   expect(world.accesses).toContain(MARKER)
   expect(world.accesses).not.toContain(OLD_MARKER)
+  expect(await answeringScript($, world)).toBe(STANDALONE_SCRIPT)
 })
 
-test('S6b team settings with no root (the shape before the team moved its files) count as off, even with the old marker', async ($, on) => {
+test('S6b team settings with no root (the shape before the team moved its files) count as outside the team, even with the old marker', async ($, on) => {
   const world = await startWorld($, on, w => {
     w.files.set(CONFIG, JSON.stringify({ register: REGISTER, agentTeam: { onFolder: 'claude-agent-team-on' } }))
     w.files.set(OLD_MARKER, 'x')
@@ -273,11 +269,11 @@ test('S6b team settings with no root (the shape before the team moved its files)
 
   await poll(world)
 
-  expect(world.log).toEqual([])
   expect(beyondSettings(world)).toEqual([])
+  expect(await answeringScript($, world)).toBe(STANDALONE_SCRIPT)
 })
 
-test('S6c a root naming a variable that is not set counts as off, and no marker is looked for', async ($, on) => {
+test('S6c a root naming a variable that is not set counts as outside the team, and no marker is looked for', async ($, on) => {
   const world = await startWorld($, on, w => {
     // HOME still finds the team's settings; only the root's %USERPROFILE% is missing.
     w.env.delete('USERPROFILE')
@@ -287,8 +283,8 @@ test('S6c a root naming a variable that is not set counts as off, and no marker 
 
   await poll(world)
 
-  expect(world.log).toEqual([])
   expect(beyondSettings(world)).toEqual([])
+  expect(await answeringScript($, world)).toBe(STANDALONE_SCRIPT)
 })
 
 /**
@@ -301,7 +297,7 @@ const setVariables = (world: World, variables: Readonly<Record<string, string | 
   Object.entries(variables).forEach(([name, value]) => (value === undefined ? world.env.delete(name) : world.env.set(name, value)))
 
 /**
- * Roots that count as off: each gives no absolute path once filled in, or names a variable the pane cannot fill in
+ * Roots that count as outside the team: each gives no absolute path once filled in, or names a variable the pane cannot fill in
  * (unset or empty, or not one of USERPROFILE, TEMP, TMP, LOCALAPPDATA and APPDATA: the engine lets a mod read only
  * the variables its code names). The world sets USERPROFILE, TEMP, TMP and SystemRoot.
  */
@@ -324,7 +320,7 @@ const UNSAFE_ROOTS: readonly (readonly [string, unknown, Readonly<Record<string,
 ]
 
 for (const [label, folder, variables] of UNSAFE_ROOTS) {
-  test(`S6d a root that is ${label} counts as off, and no marker is looked for`, async ($, on) => {
+  test(`S6d a root that is ${label} counts as outside the team, and no marker is looked for`, async ($, on) => {
     const world = await startWorld($, on, w => {
       writeRoot(w, folder)
       setVariables(w, variables)
@@ -333,12 +329,12 @@ for (const [label, folder, variables] of UNSAFE_ROOTS) {
 
     await poll(world)
 
-    expect(world.log).toEqual([])
     expect(beyondSettings(world)).toEqual([])
+    expect(await answeringScript($, world)).toBe(STANDALONE_SCRIPT)
   })
 }
 
-test('S6e a root written as an absolute path with a trailing backslash counts as on', async ($, on) => {
+test('S6e a root written as an absolute path with a trailing backslash counts as a team chat', async ($, on) => {
   const world = await startWorld($, on, w => {
     switchOff(w)
     writeRoot(w, 'D:\\team state\\')
@@ -346,7 +342,7 @@ test('S6e a root written as an absolute path with a trailing backslash counts as
     writeOpen(w, [{ id: 'D-12' }])
   })
 
-  expect(world.log).toEqual([OPENED_ONE])
+  expect(await answeringScript($, world)).toBe(SCRIPT)
 })
 
 test('S6f a drive root as the root keeps one backslash', async ($, on) => {
@@ -357,7 +353,7 @@ test('S6f a drive root as the root keeps one backslash', async ($, on) => {
     writeOpen(w, [{ id: 'D-12' }])
   })
 
-  expect(world.log).toEqual([OPENED_ONE])
+  expect(await answeringScript($, world)).toBe(SCRIPT)
 })
 
 /** The five folder variables the pane fills in, each set to a folder of its own so that no two can stand in for each other. */
@@ -381,7 +377,7 @@ const FOLDER_ROOTS: readonly (readonly [string, string])[] = [
 ]
 
 for (const [folder, root] of FOLDER_ROOTS) {
-  test(`S6g a root of ${folder} counts as on, the marker looked for under ${root}`, async ($, on) => {
+  test(`S6g a root of ${folder} counts as a team chat, the marker looked for under ${root}`, async ($, on) => {
     const world = await startWorld($, on, w => {
       switchOff(w)
       writeRoot(w, folder)
@@ -390,13 +386,13 @@ for (const [folder, root] of FOLDER_ROOTS) {
       writeOpen(w, [{ id: 'D-12' }])
     })
 
-    expect(world.log).toEqual([OPENED_ONE])
+    expect(await answeringScript($, world)).toBe(SCRIPT)
   })
 }
 
 // ── A look that fails, and a marker that goes ──
 
-test('S8 a marker check refused while on keeps the pane and its reads; the next look is fine', async ($, on) => {
+test('S8 a marker check refused keeps the pane and its reads; the next look is fine', async ($, on) => {
   const world = await startWorld($, on, w => writeOpen(w, [{ id: 'D-12' }]))
 
   world.failStats.set(MARKER, 1)
@@ -411,7 +407,7 @@ test('S8 a marker check refused while on keeps the pane and its reads; the next 
   expect(world.log.filter(line => line.startsWith('close '))).toEqual([])
 })
 
-test('S8b a refused read of the team settings while on keeps the pane', async ($, on) => {
+test('S8b a refused read of the team settings keeps the pane', async ($, on) => {
   const world = await startWorld($, on, w => writeOpen(w, [{ id: 'D-12' }]))
 
   world.failReads.set(CONFIG, 1)
@@ -422,7 +418,7 @@ test('S8b a refused read of the team settings while on keeps the pane', async ($
   expect(world.log.filter(line => line.startsWith('close '))).toEqual([])
 })
 
-test('S8c a session id that cannot be read while on keeps the pane', async ($, on) => {
+test('S8c a session id that cannot be read keeps the pane', async ($, on) => {
   const world = await startWorld($, on, w => writeOpen(w, [{ id: 'D-12' }]))
 
   world.failSessionIds = 1
@@ -433,7 +429,7 @@ test('S8c a session id that cannot be read while on keeps the pane', async ($, o
   expect(world.log.filter(line => line.startsWith('close '))).toEqual([])
 })
 
-test('S8d team settings caught half written (not JSON) while on keep the pane; the next look is fine', async ($, on) => {
+test('S8d team settings caught half written (not JSON) keep the pane; the next look is fine', async ($, on) => {
   const world = await startWorld($, on, w => writeOpen(w, [{ id: 'D-12' }]))
   const settings = world.files.get(CONFIG) ?? ''
 
@@ -449,75 +445,41 @@ test('S8d team settings caught half written (not JSON) while on keep the pane; t
   expect(world.log.filter(line => line.startsWith('close '))).toEqual([])
 })
 
-test('S8e a look that fails while off keeps it off: nothing past the switch is read until a look says on', async ($, on) => {
+test('S8e a look that fails keeps the mode until a look can tell', async ($, on) => {
   const world = await startWorld($, on, w => {
     switchOff(w)
-    writeOpen(w, [{ id: 'D-12' }])
+    writeOpen(w, [{ id: 'D-12' }, { id: 'D-13' }])
   })
 
-  await poll(world)
   switchOn(world)
   world.failReads.set(CONFIG, 1)
   await poll(world)
 
-  expect(world.log).toEqual([])
-  expect(repoAccesses(world)).toEqual([])
+  expect(await answeringScript($, world, 'D-12')).toBe(STANDALONE_SCRIPT)
 
   await poll(world)
 
-  expect(world.log).toEqual([OPENED_ONE])
+  expect(await answeringScript($, world, 'D-13')).toBe(SCRIPT)
 })
 
-test('S9 a marker removed closes the pane at the next look, and the register is no longer read', async ($, on) => {
+test('S9 a marker removed leaves the pane open, and answers then use the skill\'s script', async ($, on) => {
   const world = await startWorld($, on, w => writeOpen(w, [{ id: 'D-12' }]))
 
   switchOff(world)
-
-  const before = world.accesses.length
-
-  await poll(world)
   await poll(world)
 
-  const ui = await mountPane($)
-
-  expect(world.log).toEqual([OPENED_ONE, 'close decisions-pane by plugin'])
-  expect(world.openPanes.size).toBe(0)
-  expect(repoAccesses(world, before)).toEqual([])
-  expect(await paneText(ui)).toContain('No decisions wait for you.')
-  await ui.unmount()
+  expect(world.log).toEqual([OPENED_ONE])
+  expect(await answeringScript($, world)).toBe(STANDALONE_SCRIPT)
 })
 
 // ── The command ──
 
-test('S10 the command in a chat not switched on says how to switch it on, and opens no pane', async ($, on) => {
-  const world = await startWorld($, on, w => {
+test('S10 the command works outside the team too', async ($, on) => {
+  await startWorld($, on, w => {
     switchOff(w)
     writeOpen(w, [{ id: 'D-12' }])
   })
 
-  expect(await runCommand($)).toMatchObject({ text: NOT_ON })
-  expect(world.log).toEqual([])
-  expect(world.openPanes.size).toBe(0)
-  expect(beyondSwitch(world)).toEqual([])
-})
-
-test('S11 the command right after the chat is switched on shows the pane, without waiting for the next look', async ($, on) => {
-  const world = await startWorld($, on, w => {
-    switchOff(w)
-    writeOpen(w, [{ id: 'D-12' }])
-  })
-
-  switchOn(world)
-
+  expect(await runCommand($)).toMatchObject({ text: 'Decisions pane hidden.' })
   expect(await runCommand($)).toMatchObject({ text: 'Decisions pane shown.' })
-  expect(world.openPanes.get('decisions-pane')).toBe('Decisions (1)')
-})
-
-test('S12 the command after the marker is gone says how to switch it on, and the pane closes', async ($, on) => {
-  const world = await startWorld($, on, w => writeOpen(w, [{ id: 'D-12' }]))
-
-  switchOff(world)
-
-  expect(await runCommand($)).toMatchObject({ text: NOT_ON })
-  expect(world.openPanes.size).toBe(0)
 })

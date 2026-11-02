@@ -4,11 +4,12 @@
 import type { PluginOptions } from 'claude-code'
 
 /**
- * The options, read: the agent team's register script and the node that runs it, how often the registers are read,
- * whether the pane opens by itself, and how tall it asks to be.
+ * The options, read: the agent team's register script, the `/decisions` skill's, the node that runs them, how often the
+ * registers are read, whether the pane opens by itself, and how tall it asks to be.
  */
 export type Settings = {
   readonly registerScript: string
+  readonly standaloneScript: string
   readonly nodePath: string
   readonly pollMs: number
   readonly autoOpen: boolean
@@ -27,6 +28,7 @@ export type Settings = {
 export function settingsFrom(options: PluginOptions): Settings {
   return {
     registerScript: String(options.registerScript),
+    standaloneScript: String(options.standaloneScript),
     nodePath: String(options.nodePath),
     pollMs: Number(options.pollMs),
     autoOpen: options.autoOpen === true,

@@ -1,7 +1,7 @@
 {
   "name": "decisions-pane",
   "version": "0.1.0",
-  "description": "A pane in the Claude chat that lists the decisions the agent team's register waits for you on, each with its urgency, context, a pick list or a text box, and a Submit button that records your answer in the register.",
+  "description": "A pane in the Claude chat that lists the questions, decisions and issues the chat's repo's register waits for you on, each with its urgency, context, a pick list or a text box, and a Submit button that records your answer in the register.",
   "author": {
     "name": "JanekKosa"
   },
@@ -12,6 +12,12 @@
       "title": "Register script",
       "description": "The agent team's register.mjs, which records each answer. A leading ~ is your home folder. Its orchestration.config.json (two folders up) names the register files. Only the register of the chat's own repo is shown.",
       "default": "~/.claude/skills/orchestrate-agents/scripts/register.mjs"
+    },
+    "standaloneScript": {
+      "type": "string",
+      "title": "Register script of the decisions skill",
+      "description": "The register.mjs of the decisions skill, used in every chat not switched on for the agent team. A leading ~ is your home folder. Its orchestration.config.json (two folders up) names the register files.",
+      "default": "~/.claude/skills/decisions/scripts/register.mjs"
     },
     "nodePath": {
       "type": "string",

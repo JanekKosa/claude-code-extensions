@@ -43,7 +43,7 @@ are still planned and not in the marketplace.
 
 | Add-on | Needs | Without it |
 | --- | --- | --- |
-| `decisions-pane` | The agent team: `~\.claude\skills\orchestrate-agents`, with `/software-developer-agent`. It is not in this repository. | The mod is installed, but the pane never shows. |
+| `decisions-pane` | The `decisions` skill: `~\.claude\skills\decisions`, which the `agent-config` repository's `scripts\install.ps1` links. It is not in this repository. | The mod is installed, but agents do not know to use the pane, and an answer cannot be saved. |
 | `chat-colors` | A colour for each band you want, picked in the toolbar's Chat colors pane (Prompt band, Notes band, Answer band). No setup step can choose them. | The mod is installed, but it draws no bands. |
 
 ## Traps on this kind of machine

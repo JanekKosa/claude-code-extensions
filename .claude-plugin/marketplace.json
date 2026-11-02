@@ -16,7 +16,7 @@
     {
       "name": "decisions-pane",
       "source": "./decisions-pane",
-      "description": "A pane in the Claude chat that lists the decisions the agent team's register waits for you on, and records your pick and comments in the register."
+      "description": "A pane in the Claude chat that lists the questions, decisions and issues the repo's register waits for you on, and records your answers in the register."
     }
   ]
 }

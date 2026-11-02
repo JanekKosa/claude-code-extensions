@@ -1,8 +1,11 @@
 # decisions-pane
 
-A Claude Code mod that lists, in a pane above the prompt of the VS Code chat, every decision the agent team's
-decision register waits for you on, and records your answer in the register. It keeps decisions out of the main
-chat and shows each one the same way.
+A Claude Code mod that lists, in a pane above the prompt of the VS Code chat, every question, decision and issue the
+repo's decision register waits for you on, records your answer in the register, and hands the answer to the chat. It
+works in every chat, with no switch, and keeps these out of the main chat, each shown the same way.
+
+Agents fill the register through the `decisions` skill (`agent-config\skills\decisions`, which your global instructions
+point them to). In a chat switched on for the agent team, the team's own scripts take its place.
 
 Example: the register holds D-12 (waiting for you) and D-12-1 (waiting for an agent). The pane shows one tab,
 `Decisions (1)`, left of the Agents tab:
@@ -35,7 +38,7 @@ The heading's flags are bold, each in its own colour: the urgency (HIGH red, MED
 - Only entries of `OPEN_DECISIONS_CLAUDE.md` whose `Status:` is `waiting-for-user` (an entry with no Status line
   counts as waiting for you, as `register.mjs` reads it). Entries waiting for an agent are left out.
 - Only the register of the chat's own repo is read. Registers of other repos never show: no decision leaks between
-  repos (the user, 2026-10-26, D-14 in the agent team's register).
+  repos (the user, 2026-10-26, D-14 in the agent team's register). Every chat open on a repo shows that repo's entries.
 - Most urgent first (high, medium, low), blocking before not, then the register's own order.
 - Each entry in a frame of its own: its urgency, its id, kind and whether it blocks work, `follows D-5` for a child entry such as D-5-12, then What, Example, Recommendation
   and Meanwhile. Task and Evidence are left out (the user, 2026-10-26).
@@ -92,40 +95,46 @@ The heading's flags are bold, each in its own colour: the urgency (HIGH red, MED
 | words, on an entry with no options | your words as typed |
 
 - Other with an empty box is refused with a line under the entry; nothing is recorded.
-- The answer is written by the team's own `register.mjs answer --root <repo> --id <id> --answer <words>`, so its
-  lock and layout hold: the entry's status becomes `waiting-for-agent` and your words, exactly as given, become one
+- The answer is written by `register.mjs answer --root <repo> --id <id> --answer <words>`, the `decisions` skill's, or
+  the team's in a team chat, so its lock and layout hold: the entry's status becomes `waiting-for-agent` and your words, exactly as given, become one
   record of its id in the answers log. The mod changes nothing else; the agent closes the entry, or adds a Follow up
   block and sends it back to you, where your earlier answers show above the follow-up. The entry leaves the pane at
   once. If the script fails, the entry stays with the reason under it.
 
+## How an answer reaches the agent
+
+- In a chat outside the team, the mod sends your answers to the chat as a message of its own, once the chat is idle.
+  It starts `DECISION ANSWERS | D-20, D-21`, comes from `register.mjs handover`, and wakes an idle chat.
+- It goes when nothing waits for you any more. Example: 3 entries wait; you answer all 3 within a minute; the chat gets
+  one message with all 3.
+- If something still waits, what you answered so far goes within 30 minutes. So a blocked agent is not stuck
+  on an entry you left for later.
+- Only the chat where you pressed Submit sends answers. Another chat open on the same repo shows the same entries, but
+  is not woken by your answers. An answer goes to the chat where you gave it, even if another chat raised the entry.
+- Each answer is sent once: `handover` marks it. If the script fails, the answer stays and goes at the next try.
+- In a team chat the mod sends nothing: the team's watch and prompt hook do that.
+
+## Team chats
+
+- The mod looks at the team's marker at the start and at every refresh. A chat is a team chat while
+  `/software-developer-agent` has written a marker named after its session id,
+  `%USERPROFILE%\.claude\state\software-developer-agent\team-on\<session id>`. The first part is `teamState.folder`
+  in the team's `orchestration.config.json`; `team-on` is `agentTeam.onFolder` there. The mod only looks: it never
+  writes or removes a marker.
+- A team chat uses the team's `register.mjs`; any other chat uses the `decisions` skill's. The pane looks the same in
+  both, and needs neither the team nor its settings to be on the machine.
+- A look that fails for another reason than "not there" (a refused read, the team's settings caught half written)
+  keeps the chat as it was, and it looks again at the next refresh. These count as outside the team: a session id that
+  is not a plain id; a `teamState.folder` that is not an absolute path with a drive letter once its variables are
+  filled in; an `agentTeam.onFolder` that is not one or more plain names joined by `\`. The mod fills in five
+  variables, in any letter case: `%USERPROFILE%`, `%TEMP%`, `%TMP%`, `%LOCALAPPDATA%` and `%APPDATA%`.
+
 ## Showing and hiding it
 
-- **Only in a chat switched on for the agent team.** `/software-developer-agent` switches the team on for one chat:
-  it writes a marker named after the chat's session id,
-  `%USERPROFILE%\.claude\state\software-developer-agent\team-on\<session id>`. The first part is `teamState.folder` in
-  the team's `orchestration.config.json`, the folder of every file the team keeps for itself; `team-on` is
-  `agentTeam.onFolder` there, a folder under it. The pane checks the same marker the team's hooks check, and only
-  looks: it never writes or removes one. A marker at the old place, `%TEMP%\claude-agent-team-on\<session id>`, no
-  longer counts, and neither do team settings without `teamState.folder`. In a chat without it the pane shows nothing, even when
-  decisions wait: no tab, no opening by itself, and no register file is read. Example: D-12 waits in the repo's
-  register; an ordinary chat shows no Decisions tab; type `/software-developer-agent` there and the tab appears at
-  the next refresh (2 seconds by default), without a reload.
-- The pane looks at the marker at the start and at every refresh. A marker that goes closes the pane at the next
-  refresh. A look that fails for another reason than "not there" (a refused read, the team's settings caught half
-  written) keeps what the pane showed, and it looks again at the next refresh. These count as not switched on, as
-  they are errors for the team's own code: a session id that is not a plain id; a `teamState.folder` that is not an
-  absolute path with a drive letter once its variables are filled in (a share such as `\\server\x` included); an
-  `agentTeam.onFolder` that is not one or more plain names joined by `\`. The pane fills in five variables, in any
-  letter case: `%USERPROFILE%`, `%TEMP%`, `%TMP%`, `%LOCALAPPDATA%` and `%APPDATA%`. A mod may read only the
-  environment variables its code names, so a `teamState.folder` naming another variable, such as `%PROGRAMDATA%`,
-  counts as not switched on here although the team's own code accepts it; so does one of the five that is unset or
-  empty. A plain path such as `D:\team-state` always works.
 - It opens by itself when the chat starts with a decision waiting, or when one arrives. Opening at the start puts
   its tab left of the Agents tab, which opens only when the first agent starts.
 - The tab shows the count, `Decisions (3)`, and the pane closes by itself when nothing waits.
 - `/decisions-pane` shows or hides it. Once you close it, it stays closed until a decision it did not show arrives.
-  In a chat not switched on it opens nothing and says:
-  `The agent team is not on in this chat. Type /software-developer-agent to switch it on; the Decisions pane then shows here.`
 - A list taller than the pane scrolls.
 
 ## Installing it
@@ -140,8 +149,9 @@ claude plugin install decisions-pane@claude-code-extensions --scope user
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| Register script | `~/.claude/skills/orchestrate-agents/scripts/register.mjs` | The script that records answers; its `orchestration.config.json` (two folders up) names the register files, the answers log and the switch folder. |
-| Node | `node` | The program that runs the script. |
+| Register script | `~/.claude/skills/orchestrate-agents/scripts/register.mjs` | The agent team's script, used in a team chat; its `orchestration.config.json` (two folders up) names the register files, the answers log and the switch folder. |
+| Register script of the decisions skill | `~/.claude/skills/decisions/scripts/register.mjs` | The script used in every other chat; its `orchestration.config.json` names the register files and the answers log. |
+| Node | `node` | The program that runs the scripts. |
 | Register refresh (ms) | 2000 | How often the registers are read. At least 500. |
 | Open the pane when a decision waits | on | Off: the pane opens only on `/decisions-pane`. |
 | Pane height (lines) | 20 | How tall the pane asks to be above the prompt. |

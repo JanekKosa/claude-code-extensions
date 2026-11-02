@@ -356,6 +356,37 @@ function clockTime(ms: number): string {
   return [time.getHours(), time.getMinutes(), time.getSeconds()].map(part => String(part).padStart(2, '0')).join(':')
 }
 
+// ── Handing answers over ──
+
+/**
+ * Takes the answers that wait to go to the chat with `register.mjs handover`, which marks them as handed over, so none
+ * comes twice.
+ *
+ * @param $ the engine interface
+ * @param register the register
+ * @param whenAllAnswered true to take them only once no entry waits for the person
+ * @param settings the mod's options (registerScript, nodePath)
+ * @returns what handover printed, for the chat; empty when nothing was taken or the script failed, as the answers then
+ *   stay for the next hand-over
+ */
+export async function takeAnswers(
+  $: RegisterDollar,
+  register: RegisterLocation,
+  whenAllAnswered: boolean,
+  settings: Settings,
+): Promise<string> {
+  const flags = whenAllAnswered ? ['--when-all-answered'] : []
+  const argv = [settings.nodePath, await scriptPath($, settings), 'handover', ...flags, '--root', register.root]
+
+  try {
+    const ran = await $.process.run(argv, { cwd: register.root, timeoutMs: ANSWER_TIMEOUT_MS })
+
+    return ran.exitCode === 0 ? ran.stdout.trim() : ''
+  } catch {
+    return ''
+  }
+}
+
 // ── Writing ──
 
 /**

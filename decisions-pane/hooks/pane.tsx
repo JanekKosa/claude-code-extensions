@@ -20,7 +20,7 @@ import {
 } from './decision-state'
 import type { Board } from './decision-state'
 import { PANE_ID, closePaneForPerson, isPaneOpen, noteClosedByPerson, openPaneForPerson } from './pane-control'
-import { readRegisters } from './poll'
+import { chatSettings, handOverAfterAnswer, readRegisters } from './poll'
 import { recordAnswer } from './registers'
 import type { Settings } from './settings'
 
@@ -62,20 +62,11 @@ const POINT_INDENT = 2
 /** What a submit says when Other is picked and nothing is typed. */
 const NEEDS_TEXT = 'Type your answer in the box under Other, or pick one of the options.'
 
-/**
- * What the command says in a chat the agent team is not switched on for. The team's task lead fixed these words for
- * its guide pages to quote too: change them together.
- */
-const NOT_ON =
-  'The agent team is not on in this chat. Type /software-developer-agent to switch it on; the Decisions pane then shows here.'
-
 // ── Registering ──
 
 /**
- * Registers the answer to the pane's command, its close mark and its drawing. The command first looks at the agent
- * team's switch and reads the registers anew, so a chat switched on a moment ago is seen: in a chat that is not
- * switched on it says how to switch the team on and opens nothing; otherwise it shows or hides the pane as the person
- * saw it when they typed the command.
+ * Registers the answer to the pane's command, its close mark and its drawing. The command first reads the registers
+ * anew, then shows or hides the pane as the person saw it when they typed the command.
  *
  * @param on the module's registrar
  * @param settings the mod's options
@@ -85,9 +76,7 @@ export function registerPane(on: On, settings: Settings): void {
   on('command.run', { command: COMMAND }, async $ => {
     const wasOpen = await isPaneOpen($)
 
-    if (!(await readRegisters($, settings))) {
-      return { text: NOT_ON }
-    }
+    await readRegisters($, settings)
 
     if (wasOpen) {
       await closePaneForPerson($)
@@ -154,8 +143,9 @@ async function submit($: EngineInterface, uid: string, settings: Settings): Prom
     return
   }
 
-  await endSending($, uid, await recordAnswer($, row, answer, settings))
+  await endSending($, uid, await recordAnswer($, row, answer, chatSettings(settings)))
   await readRegisters($, settings)
+  await handOverAfterAnswer($, settings)
 }
 
 /**

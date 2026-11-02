@@ -10,12 +10,12 @@
     Windows PowerShell 5.1 runs this file, so it stays plain ASCII: 5.1 reads a UTF-8 file without a BOM as ANSI.
 
 .EXAMPLE
-    powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
 #>
 
 $ErrorActionPreference = 'Stop'
 
-$RepoRoot = $PSScriptRoot
+$RepoRoot = Split-Path -Parent $PSScriptRoot
 $ToolbarFolder = Join-Path $RepoRoot 'claude-toolbar'
 $MarketplaceFile = Join-Path $RepoRoot '.claude-plugin\marketplace.json'
 $MinimumNodeMajor = 20

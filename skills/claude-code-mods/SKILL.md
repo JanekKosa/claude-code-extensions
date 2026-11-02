@@ -11,8 +11,8 @@ first.
 ## Where mods live and how they load
 
 - Every mod is a folder of the `claude-code-extensions` repo (one per mod, beside the VS Code extensions), wherever
-  it is cloned on the machine. Its root `.claude-plugin\marketplace.json` lists them, and its `setup.ps1` installs them
-  (`SETUP.md`).
+  it is cloned on the machine. Its root `.claude-plugin\marketplace.json` lists them, and its `scripts\setup.ps1`
+  installs them (`SETUP.md`).
 - That marketplace is added from the folder, so an installed mod is read from the repo folder itself:
   `claude plugin install <mod>@claude-code-extensions --scope user`, then `/reload-plugins` (or a new chat) after
   each edit. `claude plugin list` shows `Read from:` the repo folder.

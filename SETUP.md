@@ -1,7 +1,7 @@
 # Setting up on a Windows machine
 
-For an agent, or a person, setting these add-ons up on a machine. `setup.ps1` does the work; follow these steps and
-do not run its commands by hand.
+For an agent, or a person, setting these add-ons up on a machine. `scripts\setup.ps1` does the work; follow these
+steps and do not run its commands by hand.
 
 ## Steps
 
@@ -16,7 +16,7 @@ do not run its commands by hand.
 3. Run the script from the repository's root:
 
    ```powershell
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
    ```
 
    It takes a few minutes, and ends with `SETUP DONE.` and exit code 0, or `SETUP FAILED: <the reason>` and exit
@@ -63,4 +63,4 @@ are still planned and not in the marketplace.
 ## After a `git pull`
 
 - A change in a mod: run `/reload-plugins` in each open chat, or start a new chat.
-- A change in `claude-toolbar\`: run `setup.ps1` again, then **Developer: Reload Window**.
+- A change in `claude-toolbar\`: run `scripts\setup.ps1` again, then **Developer: Reload Window**.

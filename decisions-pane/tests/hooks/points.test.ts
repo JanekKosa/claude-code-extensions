@@ -107,9 +107,22 @@ function linesAfter(lines: readonly string[], first: string, count: number): str
   return at < 0 ? [] : lines.slice(at, at + count)
 }
 
+/**
+ * Gives the parts of the first entry's frame, top to bottom.
+ *
+ * @param ui the drawing
+ * @returns the frame's children
+ */
+async function frameParts(ui: { findAll: (query: { type: 'Box' }) => Promise<readonly Described[]> }): Promise<readonly Described[]> {
+  const boxes = await ui.findAll({ type: 'Box' })
+  const frame = boxes.find(box => box.props?.borderStyle === 'round')
+
+  return (frame?.children ?? []) as readonly Described[]
+}
+
 // ── Reading ──
 
-test('P1 the sample entry gives a row whose What, Recommendation and options are its points', () => {
+test('P1the sample entry gives a row whose What, Recommendation and options are its points', () => {
   const [row] = waitingDecisions(SAMPLE, 'C:\\r')
 
   if (row === undefined) {
@@ -226,6 +239,46 @@ test('P6 the sample entry draws its first point as today and each further point 
     '○ B: leave it (no cost).',
     '○ Other: type your own answer in the box below',
   ])
+  await ui.unmount()
+})
+
+test('P6b half a line parts the heading from the question and each field from the next; a whole line parts everything else', async ($, on) => {
+  await startWorld($, on, w => {
+    w.files.set(
+      OPEN_FILE,
+      `# Open decisions\r\n\r\n${SAMPLE}\r\n- Answered: 2026-10-27 13:20: "A"\r\n- Follow up: 2026-10-27 13:30: Which day?`,
+    )
+  })
+  const ui = await mountPane($)
+  const parts = await frameParts(ui)
+  const [title, fields] = parts
+
+  expect(parts.map(part => part.props?.marginTop ?? 0)).toEqual([0, 1, 1, 1, 1, 1])
+  expect(title?.props?.rowGap).toBe(0.5)
+  expect(title?.children?.map(child => wordsOf([child]))).toEqual([
+    'MEDIUM  D-51 · question · not blocking',
+    'The pane shows each entry as one block of text.• The register joins line breaks into spaces.• The pane draws each field as one line.',
+  ])
+  expect(fields?.props?.rowGap).toBe(0.5)
+  expect(fields?.children?.map(child => wordsOf([child]))).toEqual([
+    "Example: D-40's three options sat in one paragraph.",
+    'Recommendation: A, because the user asked for it.• It also makes long entries quicker to read.',
+    'Meanwhile: Work goes on assuming A.',
+  ])
+  expect(parts.slice(2, 4).map(part => wordsOf([part]))).toEqual([
+    'Answered: 2026-10-27 13:20: "A"',
+    'Follow up: 2026-10-27 13:30: Which day?',
+  ])
+  await ui.unmount()
+})
+
+test('P6c an entry with no fields leaves no gap for them', async ($, on) => {
+  await startWorld($, on, w => {
+    w.files.set(OPEN_FILE, '# Open decisions\r\n\r\n## D-1 · question · blocking\r\n- Status: waiting-for-user\r\n- What: Only this?')
+  })
+  const ui = await mountPane($)
+
+  expect((await frameParts(ui)).map(part => part.props?.marginTop ?? 0)).toEqual([0, 1, 1])
   await ui.unmount()
 })
 

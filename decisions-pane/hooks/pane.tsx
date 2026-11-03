@@ -53,6 +53,9 @@ const KIND_COLORS: Readonly<Record<DecisionKind, string>> = {
   issue: PINK,
 }
 
+/** The space, in lines, between an entry's heading and question, and between one field and the next. */
+const NEAR_GAP = 0.5
+
 /** What starts each further point of a field, drawn on its own line under the first. */
 const BULLET = '• '
 
@@ -187,9 +190,10 @@ async function drawPane($: EngineInterface, e: RenderInput<'Pane'>, settings: Se
 
 /**
  * Draws one entry: its heading line (urgency, id, kind, blocking, parent), what it asks, its context (example,
- * recommendation, meanwhile; not its task or evidence), its history (each answer, and each follow-up with an empty line
- * above and below), then the pick list, the comments box, the reason a submit was refused, and the Submit button. What
- * it asks is its first point in bold, each further point on its own line under it.
+ * recommendation, meanwhile; not its task or evidence), its history, then the pick list, the comments box, the reason a
+ * submit was refused, and the Submit button. What it asks is its first point in bold, each further point on its own
+ * line under it. Half an empty line parts the heading from what it asks, and each context field from the next; a whole
+ * empty line parts everything else. A field's points stay together.
  *
  * @param $ the engine interface
  * @param e the render event of the pane
@@ -210,6 +214,12 @@ function drawDecision(
   const isSending = board.sending.includes(row.uid)
   const error = board.errors[row.uid]
   const [what = '', ...whatPoints] = pointsOf(row.what)
+  const fields = [
+    drawField($, e, 'Example', row.example),
+    row.options.length === 0 && drawField($, e, 'Options', row.optionsText),
+    drawField($, e, 'Recommendation', row.recommendation),
+    drawField($, e, 'Meanwhile', row.meanwhile),
+  ].filter(field => field !== false)
 
   return (
     <Box
@@ -221,19 +231,22 @@ function drawDecision(
       paddingY={1}
       rowGap={0}
     >
-      {drawHeading($, e, row)}
-      {withPoints($, e, <Text bold>{what || '(no question written)'}</Text>, whatPoints)}
-      {drawField($, e, 'Example', row.example)}
-      {row.options.length === 0 && drawField($, e, 'Options', row.optionsText)}
-      {drawField($, e, 'Recommendation', row.recommendation)}
-      {drawField($, e, 'Meanwhile', row.meanwhile)}
+      <Box flexDirection="column" rowGap={NEAR_GAP}>
+        {drawHeading($, e, row)}
+        {withPoints($, e, <Text bold>{what || '(no question written)'}</Text>, whatPoints)}
+      </Box>
+      {fields.length > 0 && (
+        <Box flexDirection="column" rowGap={NEAR_GAP} marginTop={1}>
+          {fields}
+        </Box>
+      )}
       {row.history.map(item => drawHistoryItem($, e, item))}
       <Box flexDirection="column" rowGap={0.5} marginTop={1}>
         {row.options.length > 0 && drawChoices($, e, row, pick)}
         {drawNoteBox($, e, row, pick, board.notes[row.uid] ?? '')}
         {error !== undefined && <Text color={RED}>{error}</Text>}
       </Box>
-      <Box flexDirection="row" flexWrap="wrap" alignItems="center" columnGap={1} marginTop={1.5} marginBottom={0.5}>
+      <Box flexDirection="row" flexWrap="wrap" alignItems="center" columnGap={1} marginTop={1} marginBottom={0.5}>
         <Button
           key={`submit:${row.uid}`}
           label={isSending ? 'Saving…' : 'Submit'}
@@ -347,9 +360,9 @@ function drawPoint($: EngineInterface, e: RenderInput<'Pane'>, point: string): R
 }
 
 /**
- * Draws one step of an entry's history: its label (`Answered`, dim; `Follow up`, bold orange, with an empty line above
- * and below), its time, and its text line by line, each further line indented as the register file does, and an
- * empty line in the text as a line of space before the next.
+ * Draws one step of an entry's history, an empty line above it: its label (`Answered`, dim; `Follow up`, bold orange),
+ * its time, and its text line by line, each further line indented as the register file does, and an empty line in the
+ * text as a line of space before the next.
  *
  * @param $ the engine interface
  * @param e the render event of the pane
@@ -363,7 +376,7 @@ function drawHistoryItem($: EngineInterface, e: RenderInput<'Pane'>, item: Histo
   const label = `${item.label}: `
 
   return (
-    <Box flexDirection="column" {...(isFollowUp ? { marginY: 1 } : {})}>
+    <Box flexDirection="column" marginTop={1}>
       <Text wrap="wrap">
         {isFollowUp ? <Text color={ORANGE} bold>{label}</Text> : <Text dimColor>{label}</Text>}
         {item.at === '' ? first : `${item.at}: ${first}`}

@@ -16,6 +16,7 @@ Example: the register holds D-12 (waiting for you) and D-12-1 (waiting for an ag
 ╭──────────────────────────────────────────────────────────────╮
 │ HIGH  D-12 · question · blocking                             │
 │ Should a rejected invoice be retried?                        │
+│                                                              │
 │ Example: Invoice 1001 for 250.00 PLN was rejected at 10:02 … │
 │ Recommendation: A, because 9 of the last 10 rejections …     │
 │ Meanwhile: Rejected invoices wait in the error list.         │
@@ -41,13 +42,14 @@ The heading's flags are bold, each in its own colour: the urgency (HIGH red, MED
   repos (the user, 2026-10-26, D-14 in the agent team's register). Every chat open on a repo shows that repo's entries.
 - Most urgent first (high, medium, low), blocking before not, then the register's own order.
 - Each entry in a frame of its own: its urgency, its id, kind and whether it blocks work, `follows D-5` for a child entry such as D-5-12, then What, Example, Recommendation
-  and Meanwhile. Task and Evidence are left out (the user, 2026-10-26).
+  and Meanwhile. Task and Evidence are left out (the user, 2026-10-26). Half an empty line parts the heading line from
+  What, and each of Example, Recommendation and Meanwhile from the next; a whole empty line parts everything else. A
+  field's points stay together.
 - An entry an agent sent back to you also shows its history, oldest first:
   - each answer you gave to it, `Answered: 2026-10-26 10:05: A, retry once`, read from the register's answers log
     `ANSWERS_LOG_CLAUDE.jsonl` beside the open file (the name comes from `register.answersLogFile` in the team's
     `orchestration.config.json`);
-  - each `Follow up` block the agent added to the entry, `Follow up: 2026-10-26 10:20: …`, the label in orange, with
-    an empty line above and below it.
+  - each `Follow up` block the agent added to the entry, `Follow up: 2026-10-26 10:20: …`, the label in orange.
 
   Answers and follow-ups are in time order; an answer and a follow-up of the same minute show the answer first, as
   the follow-up answers it. Line breaks are kept: each further line is indented, and an empty line in a follow-up

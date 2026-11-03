@@ -363,7 +363,7 @@ test('D19 two answers and two Follow up blocks show in time order, line and para
     '',
     'a new paragraph after an empty line',
     '',
-    '',
+    '[○]',
   ])
   await ui.unmount()
 })
